@@ -1,0 +1,18 @@
+services:
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-vorhaben}
+      MARIADB_USER: ${DB_USER:-vorhaben}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-vorhaben}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    ports:
+      - '${DB_PORT:-3306}:3306'
+    volumes:
+      - ./.docker/mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized']
+      interval: 5s
+      timeout: 5s
+      retries: 10

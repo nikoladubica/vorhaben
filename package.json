@@ -1,0 +1,37 @@
+{
+  "name": "vorhaben",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Track and manage your business endeavours.",
+  "license": "MIT",
+  "author": "nikoladubica",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nikoladubica/vorhaben.git"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace server & npm run dev --workspace client & wait",
+    "dev:server": "npm run dev --workspace server",
+    "dev:client": "npm run dev --workspace client",
+    "build": "npm run build --workspace server && npm run build --workspace client",
+    "lint": "npm run lint --workspace server && npm run lint --workspace client",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace client",
+    "migrate": "npm run migrate --workspace server",
+    "migrate:rollback": "npm run migrate:rollback --workspace server"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}
