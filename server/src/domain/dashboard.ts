@@ -1,6 +1,7 @@
 import { db } from '../db/index.js';
 import { convert, loadRates } from './fx.js';
 import { computeMetricsForUser } from './metrics.js';
+import { buildSuggestions, type Suggestion, type SuggestionProject } from './suggestions.js';
 
 // ---------------------------------------------------------------------------
 // Dashboard aggregation (BUSINESS_LOGIC.md §4.1) — the read model behind GET /api/dashboard
@@ -327,4 +328,89 @@ export async function buildDashboard(
       missing_rates: [...missingCurrencies].sort(),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Focus suggestions (BUSINESS_LOGIC.md §4.2) — DB-facing assembler
+// ---------------------------------------------------------------------------
+//
+// This is the thin adapter between the database and the PURE rules in domain/suggestions.ts. It
+// is deliberately a SEPARATE payload from buildDashboard (per ticket 10): the client loads the
+// callout independently, and the future LLM variant can swap in behind the identical
+// Suggestion[] shape without touching the rest of the dashboard.
+//
+// It reuses the canonical normalization once (computeMetricsForUser → the windowed effective
+// hourly rate that rule 1 ranks on) and adds ONE second pass over the user's income entries —
+// the same pattern buildDashboard uses — to bucket converted revenue per project per calendar
+// month, which powers the trend-based rules 2, 3 and 4. No date filter on that pass: an ended
+// project's own last-active-quarter (rule 3) may sit well before any fixed trailing window.
+
+/**
+ * Assemble and run the four v1 focus heuristics for `userId`.
+ *
+ * @param userId  the owner; every query is user-scoped and soft-deleted projects are excluded.
+ * @returns the fired suggestions, warnings first (an empty array is a valid, common result).
+ */
+export async function buildSuggestionsForUser(userId: number): Promise<Suggestion[]> {
+  // 1. Base currency + reference date.
+  const user = await db('users').where('id', userId).first('base_currency');
+  const baseCurrency = (user as { base_currency: string } | undefined)?.base_currency ?? 'EUR';
+  const asOf = todayUtc();
+
+  // 2. Non-deleted project metadata (name/status/end_date drive the rules; type unused here).
+  const projectMeta = await db('projects')
+    .where('user_id', userId)
+    .whereNull('deleted_at')
+    .select<ProjectMetaRow[]>(
+      'id',
+      'name',
+      'type',
+      'status',
+      db.raw("DATE_FORMAT(start_date, '%Y-%m-%d') as start_date"),
+      db.raw("DATE_FORMAT(end_date, '%Y-%m-%d') as end_date"),
+    );
+  if (projectMeta.length === 0) return [];
+
+  // 3. Canonical windowed metrics — reused once for the effective hourly rate (rule 1).
+  const metrics = await computeMetricsForUser(userId);
+
+  // 4. Every income entry for the user's projects (no date filter), converted and bucketed per
+  //    project per calendar month.
+  const entryRows = await db('income_entries as e')
+    .join('projects as p', 'p.id', 'e.project_id')
+    .where('p.user_id', userId)
+    .whereNull('p.deleted_at')
+    .select<EntryRow[]>(
+      'e.project_id as project_id',
+      db.raw("DATE_FORMAT(e.date, '%Y-%m-%d') as date"),
+      'e.amount as amount',
+      'e.currency as currency',
+    );
+
+  const rates = await loadRates(baseCurrency);
+
+  const revenueByProject = new Map<number, Record<string, number>>();
+  for (const row of entryRows) {
+    const conversion = convert(row.amount, row.currency, baseCurrency, row.date, rates);
+    const value = Number(conversion.converted);
+    const monthKey = row.date.slice(0, 7);
+    let byMonth = revenueByProject.get(row.project_id);
+    if (!byMonth) {
+      byMonth = {};
+      revenueByProject.set(row.project_id, byMonth);
+    }
+    byMonth[monthKey] = (byMonth[monthKey] ?? 0) + value;
+  }
+
+  // 5. Materialize the per-project records and hand them to the pure rules.
+  const suggestionProjects: SuggestionProject[] = projectMeta.map((meta) => ({
+    projectId: meta.id,
+    name: meta.name,
+    status: meta.status,
+    effectiveHourlyRate: metrics.get(meta.id)?.effectiveHourlyRate ?? null,
+    endMonth: meta.end_date === null ? null : meta.end_date.slice(0, 7),
+    revenueByMonth: revenueByProject.get(meta.id) ?? {},
+  }));
+
+  return buildSuggestions(suggestionProjects, asOf, baseCurrency);
 }

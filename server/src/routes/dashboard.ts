@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { buildDashboard } from '../domain/dashboard.js';
+import { buildDashboard, buildSuggestionsForUser } from '../domain/dashboard.js';
 
 // Mounted at /api/dashboard behind requireAuth (see app.ts). Read-only aggregation of the
 // caller's projects into the §4.1 dashboard views. Every underlying query is user-scoped and
@@ -36,4 +36,13 @@ dashboardRouter.get('/', async (req, res) => {
 
   const dashboard = await buildDashboard(userId, { months });
   res.json(dashboard);
+});
+
+// GET /api/dashboard/suggestions — the §4.2 focus callout, a SEPARATE payload from the dashboard
+// so the client can load it independently and the future LLM variant can swap in behind the same
+// { suggestions } shape. Warnings are ordered first; an empty array is a valid response.
+dashboardRouter.get('/suggestions', async (req, res) => {
+  const userId = req.userId as number;
+  const suggestions = await buildSuggestionsForUser(userId);
+  res.json({ suggestions });
 });
