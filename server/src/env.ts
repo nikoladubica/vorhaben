@@ -13,10 +13,16 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+
 export const env = {
-  nodeEnv: process.env.NODE_ENV ?? 'development',
+  nodeEnv,
   port: Number(process.env.PORT ?? 4001),
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  // Required secret for signing JWTs. In production there is NO fallback — the
+  // process must fail fast if it is missing. In dev/self-host a stable fallback
+  // keeps local setup frictionless.
+  jwtSecret: required('JWT_SECRET', nodeEnv === 'production' ? undefined : 'dev-insecure-jwt-secret-change-me'),
   db: {
     host: required('DB_HOST', 'localhost'),
     port: Number(process.env.DB_PORT ?? 3307),
