@@ -25,3 +25,6 @@ coverage/
 
 # MariaDB local volume (docker-compose)
 .docker/mariadb-data/
+
+# Claude
+.claude 
