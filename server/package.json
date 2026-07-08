@@ -9,10 +9,10 @@
     "start": "node dist/index.js",
     "lint": "oxlint .",
     "typecheck": "tsc --noEmit",
-    "migrate": "tsx ./node_modules/knex/bin/cli.js migrate:latest --knexfile src/db/knexfile.ts",
-    "migrate:rollback": "tsx ./node_modules/knex/bin/cli.js migrate:rollback --knexfile src/db/knexfile.ts",
-    "migrate:make": "tsx ./node_modules/knex/bin/cli.js migrate:make --knexfile src/db/knexfile.ts -x ts",
-    "seed": "tsx ./node_modules/knex/bin/cli.js seed:run --knexfile src/db/knexfile.ts"
+    "migrate": "NODE_OPTIONS=--import=tsx knex migrate:latest --knexfile src/db/knexfile.ts",
+    "migrate:rollback": "NODE_OPTIONS=--import=tsx knex migrate:rollback --knexfile src/db/knexfile.ts",
+    "migrate:make": "NODE_OPTIONS=--import=tsx knex migrate:make --knexfile src/db/knexfile.ts -x ts",
+    "seed": "NODE_OPTIONS=--import=tsx knex seed:run --knexfile src/db/knexfile.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
