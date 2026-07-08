@@ -9,6 +9,7 @@ import { projectsRouter } from './routes/projects.js';
 import { projectTypesRouter } from './routes/projectTypes.js';
 import { projectEntriesRouter, entriesRouter } from './routes/incomeEntries.js';
 import { projectTimeLogsRouter, timeLogsRouter } from './routes/timeLogs.js';
+import { fxRatesRouter } from './routes/fxRates.js';
 
 export const app = express();
 
@@ -28,3 +29,4 @@ app.use('/api/projects', requireAuth, projectTimeLogsRouter);
 app.use('/api/project-types', requireAuth, projectTypesRouter);
 app.use('/api/entries', requireAuth, entriesRouter);
 app.use('/api/time-logs', requireAuth, timeLogsRouter);
+app.use('/api/fx-rates', requireAuth, fxRatesRouter);
