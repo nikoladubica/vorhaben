@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "lint": "oxlint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "migrate": "NODE_OPTIONS=--import=tsx knex migrate:latest --knexfile src/db/knexfile.ts",
     "migrate:rollback": "NODE_OPTIONS=--import=tsx knex migrate:rollback --knexfile src/db/knexfile.ts",
     "migrate:make": "NODE_OPTIONS=--import=tsx knex migrate:make --knexfile src/db/knexfile.ts -x ts",
@@ -33,6 +34,7 @@
     "@types/node": "^22.10.5",
     "oxlint": "^1.71.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.5"
   }
 }
