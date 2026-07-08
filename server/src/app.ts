@@ -7,6 +7,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { projectsRouter } from './routes/projects.js';
 import { projectTypesRouter } from './routes/projectTypes.js';
+import { projectEntriesRouter, entriesRouter } from './routes/incomeEntries.js';
 
 export const app = express();
 
@@ -17,4 +18,8 @@ app.use(cookieParser());
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/projects', requireAuth, projectsRouter);
+// Nested income-entry routes (/:id/entries) share the /api/projects mount; /:id is a single
+// segment so it never captures /:id/entries, and projectsRouter falls through to here.
+app.use('/api/projects', requireAuth, projectEntriesRouter);
 app.use('/api/project-types', requireAuth, projectTypesRouter);
+app.use('/api/entries', requireAuth, entriesRouter);
