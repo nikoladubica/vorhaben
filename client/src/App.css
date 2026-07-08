@@ -1096,6 +1096,303 @@ tr.editable:focus-visible {
   gap: 10px;
 }
 
+/* ═══════════════ dashboard (ticket 15) ═══════════════ */
+/* Ported from the design file (screens 01 Dashboard, 05 Projects & Timeline, 11 Income). */
+
+/* header controls: base-currency label + the 3/6/12 month window switcher */
+.dash-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.dash-head .period {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+/* subtle dim while a window switch is refetching */
+.dash-loading {
+  opacity: 0.55;
+}
+
+/* charts: shared SVG text + tick/label styling (verbatim from the design file) */
+figure.chart {
+  margin: 0;
+}
+svg text {
+  font-family: var(--sans);
+}
+.tick {
+  font-size: 10.5px;
+  fill: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.dlabel {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* trend column chart: single grey series, red current month */
+.trend .bar {
+  fill: var(--bar-mute);
+}
+.trend .bar.cur {
+  fill: var(--red);
+}
+.trend .grid-line {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.trend .baseline {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+.trend rect:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 1px;
+}
+
+/* rankings: two panels side by side (a wider arrangement than the design's single 1fr panel) */
+.rank-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+.rank {
+  display: flex;
+  flex-direction: column;
+}
+.rank-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 72px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  text-decoration: none;
+  color: inherit;
+}
+.rank-row + .rank-row {
+  border-top: 1px solid var(--grid);
+}
+.rank-row .n {
+  font-size: 13px;
+}
+.rank-row .n small {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.rank-row .n small.hint {
+  font-style: italic;
+}
+.rank-row .v {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rbar {
+  height: 12px;
+  position: relative;
+  background: transparent;
+}
+.rbar i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--red);
+  border-radius: 0 4px 4px 0;
+}
+.rbar i.mute {
+  background: var(--bar-mute);
+}
+a.rank-row:hover .n {
+  color: var(--red);
+}
+.rank-row:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: -2px;
+}
+.rank-empty {
+  font-size: 13px;
+  color: var(--ink-2);
+  padding: 12px 0 8px;
+  margin: 0;
+}
+
+/* focus callout (verbatim from the design file) */
+.focus {
+  border: 1px solid var(--hairline);
+  border-top: 2px solid var(--red);
+  margin-top: 24px;
+  background: var(--paper);
+}
+.focus .panel-b {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding-top: 14px;
+}
+.focus p {
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 6px 0 0;
+  max-width: 52ch;
+}
+.focus p strong {
+  font-weight: 600;
+}
+.focus .k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.focus .k.dim {
+  color: var(--ink-3);
+}
+/* links inside a suggestion: ink text with a hairline underline, red on hover (not red body) */
+.focus a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid var(--hairline);
+}
+.focus a:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+.focus a.focus-view {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* chart tooltip (verbatim from the design file's #tip) */
+.chart-tip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 50;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 7px 10px;
+  border-radius: 2px;
+  max-width: 240px;
+}
+.chart-tip b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* timeline (verbatim from the design file; the 18-column grid is now dynamic via inline styles) */
+.tl {
+  padding: 6px 0 4px;
+}
+.tl-panel {
+  overflow-x: auto;
+}
+.tl-months {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  margin-bottom: 6px;
+}
+.tl-scale {
+  display: grid;
+  font-size: 10px;
+  color: var(--ink-3);
+}
+.tl-scale span {
+  border-left: 1px solid var(--grid);
+  padding: 2px 0 2px 4px;
+  letter-spacing: 0.04em;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  min-height: 34px;
+  text-decoration: none;
+  color: inherit;
+}
+.tl-row + .tl-row {
+  border-top: 1px solid var(--grid);
+}
+.tl-row .tl-n {
+  font-size: 12.5px;
+  padding-right: 12px;
+}
+.tl-row .tl-n small {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+a.tl-row:hover .tl-n {
+  color: var(--red);
+}
+.tl-track {
+  position: relative;
+  height: 34px;
+}
+.tl-bar {
+  position: absolute;
+  top: 11px;
+  height: 12px;
+  background: var(--bar-mute);
+  border-radius: 0 4px 4px 0;
+}
+.tl-bar.hot {
+  background: var(--red);
+}
+.tl-bar.ended {
+  background: var(--hairline);
+}
+.tl-bar.open {
+  border-radius: 0;
+}
+
+/* missing-rates notice + warn flag (verbatim from the design file) */
+.rates-notice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--red);
+  background: var(--paper);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.rates-notice .rates-body {
+  flex: 1;
+}
+.warn-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--red);
+  white-space: nowrap;
+}
+.warn-flag::before {
+  content: '!';
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--red);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+}
+
 @media (max-width: 960px) {
   .cols {
     grid-template-columns: 1fr;
@@ -1103,5 +1400,12 @@ tr.editable:focus-visible {
   .entry-add,
   .entry-add.income {
     grid-template-columns: 1fr 1fr;
+  }
+  .rank-cols {
+    grid-template-columns: 1fr;
+  }
+  .focus .panel-b {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 }
