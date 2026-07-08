@@ -15,11 +15,11 @@ function required(name: string, fallback?: string): string {
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
-  port: Number(process.env.PORT ?? 4000),
+  port: Number(process.env.PORT ?? 4001),
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   db: {
     host: required('DB_HOST', 'localhost'),
-    port: Number(process.env.DB_PORT ?? 3306),
+    port: Number(process.env.DB_PORT ?? 3307),
     user: required('DB_USER', 'vorhaben'),
     password: required('DB_PASSWORD', 'vorhaben'),
     database: required('DB_NAME', 'vorhaben'),

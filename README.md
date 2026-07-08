@@ -1,6 +1,6 @@
 # vorhaben
 
-Track and manage your business endeavours — an open-source project tracker for founders juggling
+Track and manage your business endeavours - an open-source project tracker for people juggling
 more than one thing at once.
 
 *Vorhaben* is German for "undertaking" / "venture".
@@ -44,7 +44,7 @@ npm run dev
 ```
 
 - Client: http://localhost:5173
-- Server: http://localhost:4000 (proxied under `/api` from the client dev server)
+- Server: http://localhost:4001 (proxied under `/api` from the client dev server)
 
 ### Scripts
 
