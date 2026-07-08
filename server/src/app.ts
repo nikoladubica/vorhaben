@@ -11,6 +11,7 @@ import { projectEntriesRouter, entriesRouter } from './routes/incomeEntries.js';
 import { projectTimeLogsRouter, timeLogsRouter } from './routes/timeLogs.js';
 import { projectNotesRouter, notesRouter } from './routes/notes.js';
 import { fxRatesRouter } from './routes/fxRates.js';
+import { dashboardRouter } from './routes/dashboard.js';
 
 export const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/entries', requireAuth, entriesRouter);
 app.use('/api/time-logs', requireAuth, timeLogsRouter);
 app.use('/api/notes', requireAuth, notesRouter);
 app.use('/api/fx-rates', requireAuth, fxRatesRouter);
+app.use('/api/dashboard', requireAuth, dashboardRouter);
 
 // Body-parser overflow handler. A payload above the 2mb parser ceiling throws before any route
 // runs; catch just that case and answer with a consistent JSON 413 (instead of Express's default
