@@ -858,6 +858,244 @@ tr.editable:focus-visible {
   border-color: var(--ink);
 }
 
+/* ————— notes journal (ticket 14) ————— */
+/* Card + rendered-Markdown rules ported from the design file (screen: project detail / notes). */
+.note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.note-card {
+  border: 1px solid var(--hairline);
+  padding: 16px 18px;
+}
+.note-card .nc-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.note-card .nc-t {
+  font-size: 14px;
+  font-weight: 700;
+}
+.note-card .nc-d {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* rendered Markdown — the safe output of <Markdown> */
+.md {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.md p {
+  margin: 0 0 10px;
+}
+.md p:last-child {
+  margin-bottom: 0;
+}
+.md ul,
+.md ol {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+.md li {
+  margin-bottom: 4px;
+}
+.md strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.md code {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: var(--paper);
+  border: 1px solid var(--grid);
+  padding: 1px 5px;
+}
+.md a {
+  color: var(--red);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(218, 41, 28, 0.35);
+}
+/* heading hierarchy via weight/size only (no new colours or fonts) */
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0 0 8px;
+}
+.md h1 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.md h2 {
+  font-size: 16px;
+}
+.md h3 {
+  font-size: 14px;
+}
+.md h4 {
+  font-size: 13px;
+}
+.md blockquote {
+  margin: 0 0 10px;
+  padding: 2px 0 2px 14px;
+  border-left: 2px solid var(--hairline);
+  color: var(--ink-3);
+}
+/* fenced code blocks marked can emit */
+.md pre {
+  margin: 0 0 10px;
+  padding: 12px 14px;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  overflow-x: auto;
+}
+.md pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+}
+/* GFM tables (marked gfm:true) */
+.md table {
+  border-collapse: collapse;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.md th,
+.md td {
+  border: 1px solid var(--hairline);
+  padding: 6px 10px;
+  text-align: left;
+}
+.md th {
+  background: var(--paper);
+  font-weight: 600;
+  color: var(--ink);
+}
+/* long bodies collapse behind an Expand toggle */
+.md-clamp {
+  max-height: 160px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
+.notes-panel .nc-head-r {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.notes-panel .nc-head-r .s {
+  font-variant-numeric: tabular-nums;
+}
+.note-card .nc-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--grid);
+}
+.note-card .nc-actions-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* inline editor (create/edit) */
+.note-editor-wrap {
+  margin-bottom: 14px;
+}
+.note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  padding: 16px 18px;
+}
+.note-editor .ne-title {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  width: 100%;
+}
+.note-editor .ne-title:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.note-editor .ne-title[aria-invalid='true'] {
+  border-color: var(--red);
+}
+/* Write / Preview two-tab toggle */
+.ne-tabs {
+  display: inline-flex;
+  gap: 8px;
+}
+.ne-tabs .btn[data-on] {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--surface);
+}
+/* Markdown source textarea (adapted from the design's .ed-src) */
+.note-editor .ne-src {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  resize: vertical;
+  min-height: 180px;
+  width: 100%;
+}
+.note-editor .ne-src:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.note-editor .ne-src[aria-invalid='true'] {
+  border-color: var(--red);
+}
+/* preview pane fills the same box as the textarea so the toggle doesn't jump */
+.note-editor > .md {
+  min-height: 180px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+.note-editor .ne-empty {
+  min-height: 180px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.note-editor .ne-actions {
+  display: flex;
+  gap: 10px;
+}
+
 @media (max-width: 960px) {
   .cols {
     grid-template-columns: 1fr;

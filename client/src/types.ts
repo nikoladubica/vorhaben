@@ -98,3 +98,24 @@ export interface TimeLogInput {
   hours: string;
   note?: string | null;
 }
+
+// A Markdown journal note from GET /api/projects/:id/notes (newest-touched first, §3). `body_md`
+// is RAW Markdown — the server stores and returns it byte-for-byte, so the client render path is
+// the security boundary (see components/markdown/Markdown.tsx). `created_at`/`updated_at` are real
+// timestamps and arrive as ISO strings over JSON (unlike the YYYY-MM-DD dates elsewhere). Mirrors
+// the NoteRow shape in server/src/routes/notes.ts.
+export interface Note {
+  id: number;
+  project_id: number;
+  title: string;
+  body_md: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Write payload for creating/updating a note. `title` is required and non-empty; `body_md` is
+// sent verbatim (server caps it at 1 MiB → 413). On PATCH callers pass a Partial of this.
+export interface NoteInput {
+  title: string;
+  body_md: string;
+}

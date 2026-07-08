@@ -26,6 +26,7 @@ import {
 import { StatusBadge } from '../components/projects/StatusBadge';
 import { EntriesSection } from '../components/entries/EntriesSection';
 import { TimeLogsSection } from '../components/entries/TimeLogsSection';
+import { NotesSection } from '../components/notes/NotesSection';
 
 // today minus 3 months, YYYY-MM-DD — the default range lower bound (normalization window §2.2).
 function threeMonthsAgo(): string {
@@ -316,7 +317,7 @@ export function ProjectDetailPage() {
             currency={currency}
           />
           <TimeLogsSection projectId={project.id} from={from} to={to} />
-          {/* TODO(ticket 14): notes section mounts here */}
+          <NotesSection projectId={project.id} />
         </div>
 
         <div>
