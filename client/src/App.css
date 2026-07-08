@@ -659,3 +659,211 @@ table.projects th.r {
   display: flex;
   gap: 10px;
 }
+
+/* ————— project detail (ported from the design file) ————— */
+.pd-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.pd-head h3 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pd-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.pd-meta .sep {
+  color: var(--ink-3);
+}
+.pd-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* two-column layout + key/value compensation panel (from the design file) */
+.cols {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+.kv {
+  display: flex;
+  flex-direction: column;
+}
+.kv .kvr {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--grid);
+}
+.kv .kvr:last-child {
+  border-bottom: 0;
+}
+.kv .kvr b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.kv .kvr span:first-child {
+  color: var(--ink-3);
+}
+
+/* inline quick-add (from the design file; .income adds an editable currency column) */
+.entry-add {
+  display: grid;
+  grid-template-columns: 110px 1fr 130px auto;
+  gap: 10px;
+  padding: 12px;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  margin-bottom: 14px;
+  align-items: center;
+}
+.entry-add.income {
+  grid-template-columns: 110px 1fr 120px 72px auto;
+}
+.entry-add input {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 9px 10px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  width: 100%;
+}
+.entry-add input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.entry-add input[aria-invalid='true'] {
+  border-color: var(--red);
+}
+.quick-add-error {
+  margin: -6px 0 14px;
+}
+
+/* inline row editing + per-row actions in the entry / time-log tables (composed from tokens) */
+tr.editable {
+  cursor: pointer;
+}
+tr.editable:hover td {
+  background: var(--paper);
+}
+tr.editable:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+.cell-input {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 7px 8px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  width: 100%;
+}
+.cell-input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.cell-input[aria-invalid='true'] {
+  border-color: var(--red);
+}
+.row-actions {
+  display: inline-flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.row-confirm {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.row-btn {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.row-btn:hover {
+  color: var(--ink);
+}
+.row-btn.danger:hover {
+  color: var(--red);
+}
+.row-btn[disabled] {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* shared range filter above the two-column layout (composed from tokens) */
+.range-filter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.range-filter .range-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.range-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.range-filter input {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+}
+.range-filter input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+@media (max-width: 960px) {
+  .cols {
+    grid-template-columns: 1fr;
+  }
+  .entry-add,
+  .entry-add.income {
+    grid-template-columns: 1fr 1fr;
+  }
+}
