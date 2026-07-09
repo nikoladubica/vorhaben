@@ -46,3 +46,9 @@ export function updateEntry(
 export function deleteEntry(id: number): Promise<void> {
   return api.del<void>(`/entries/${id}`);
 }
+
+// Flip an auto-generated expected entry to a confirmed manual one. The server returns the
+// updated row (now source:'manual') in the same shape as PATCH/POST.
+export function confirmEntry(id: number): Promise<IncomeEntry> {
+  return api.post<IncomeEntry>(`/entries/${id}/confirm`);
+}

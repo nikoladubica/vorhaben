@@ -1,5 +1,6 @@
 import { db } from '../db/index.js';
 import { convert, loadRates } from './fx.js';
+import { ensureExpectedEntries, isSalaried } from './expectedEntries.js';
 import {
   computeProjectMetrics,
   type MetricsEntry,
@@ -18,6 +19,10 @@ import type { CompensationModel } from './constants.js';
 // project count: projects, all entries, all time logs, fx rates, user), converts each entry to
 // the user's base currency via fx.ts, then hands the fully-materialized fixtures to
 // computeProjectMetrics(). Tickets 09 (API) and 10 (dashboard) call this and nothing lower.
+//
+// One extra pass precedes those five queries: for SALARIED projects only (typically a handful),
+// ensureExpectedEntries lazily materializes any missing expected entries so their revenue shows
+// up here without a scheduler (BUSINESS_LOGIC.md §2.1). Non-salaried projects add no query.
 //
 // Query strategy: entries and time logs are loaded for the whole project set in ONE grouped
 // query each (whereIn project ids), with NO date filter. The `fixed` model needs every one of
@@ -78,6 +83,14 @@ export async function computeMetricsForUser(
 
   const result = new Map<number, ProjectMetrics>();
   if (projects.length === 0) return result;
+
+  // Pre-generate expected entries for salaried projects (a no-op for the rest) BEFORE the bulk
+  // entry query below picks them up — no special revenue branch in the math is needed.
+  for (const project of projects) {
+    if (isSalaried(project.compensation_model)) {
+      await ensureExpectedEntries(project.id);
+    }
+  }
 
   const projectIds = projects.map((p) => p.id);
 

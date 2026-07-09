@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Knex } from 'knex';
 import { db } from '../db/index.js';
 import { assertProjectOwned } from '../domain/ownership.js';
+import { ensureExpectedEntries } from '../domain/expectedEntries.js';
 
 // Two routers: the nested one is mounted alongside projectsRouter at /api/projects and owns
 // the `/:id/entries` paths; the flat one is mounted at /api/entries and owns single-entry
@@ -179,6 +180,10 @@ projectEntriesRouter.get('/:id/entries', async (req, res) => {
     return;
   }
 
+  // Lazily materialize any missing expected entries (salaried projects only; a no-op otherwise)
+  // BEFORE selecting, so newly generated rows appear in this (optionally windowed) list.
+  await ensureExpectedEntries(id);
+
   // Optional date-range filter; malformed bounds are a client error.
   const { from, to } = req.query;
   const fields: Record<string, string> = {};
@@ -291,16 +296,18 @@ entriesRouter.patch('/:id', async (req, res) => {
 
   // Empty patch: nothing to change (Knex rejects an empty update), return the current row.
   if (Object.keys(result.value).length > 0) {
-    await db('income_entries').where('id', id).update(result.value);
+    // Adjusting an entry confirms it: an expected entry the user edits becomes manual so
+    // regeneration never touches it again. A manual entry stays manual (no-op).
+    await db('income_entries').where('id', id).update({ ...result.value, source: 'manual' });
   }
 
   const updated = await entrySelect(db).where('id', id).first();
   res.json(updated);
 });
 
-// DELETE /api/entries/:id — hard delete is allowed: entries are user-corrected data points,
-// not history-bearing records like projects.
-entriesRouter.delete('/:id', async (req, res) => {
+// POST /api/entries/:id/confirm — accept an auto-generated expected entry as-is, flipping its
+// source to 'manual' so regeneration leaves it alone. A no-op flip on an already-manual entry.
+entriesRouter.post('/:id/confirm', async (req, res) => {
   const userId = req.userId as number;
   const id = parseId(req.params.id);
   if (id === null) {
@@ -312,6 +319,51 @@ entriesRouter.delete('/:id', async (req, res) => {
   if (ownedId === undefined) {
     res.status(404).json({ error: 'not_found' });
     return;
+  }
+
+  await db('income_entries').where('id', id).update({ source: 'manual' });
+
+  const confirmed = await entrySelect(db).where('id', id).first();
+  res.json(confirmed);
+});
+
+// DELETE /api/entries/:id — hard delete is allowed: entries are user-corrected data points,
+// not history-bearing records like projects. Deleting an EXPECTED entry additionally records a
+// suppression tombstone so its period is not resurrected on the next generation pass; deleting a
+// manual entry just removes it.
+entriesRouter.delete('/:id', async (req, res) => {
+  const userId = req.userId as number;
+  const id = parseId(req.params.id);
+  if (id === null) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+
+  // Fetch source + project + period date alongside ownership so we know whether to suppress.
+  const owned = (await db('income_entries as e')
+    .join('projects as p', 'p.id', 'e.project_id')
+    .where('e.id', id)
+    .andWhere('p.user_id', userId)
+    .whereNull('p.deleted_at')
+    .first(
+      'e.id as id',
+      'e.source as source',
+      'e.project_id as project_id',
+      db.raw("DATE_FORMAT(e.date, '%Y-%m-%d') as date"),
+    )) as
+    | { id: number; source: 'manual' | 'expected'; project_id: number; date: string }
+    | undefined;
+  if (owned === undefined) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+
+  if (owned.source === 'expected') {
+    // Tombstone the period first; INSERT IGNORE keeps a repeat delete idempotent.
+    await db('suppressed_expected_entries')
+      .insert({ project_id: owned.project_id, period_date: owned.date })
+      .onConflict(['project_id', 'period_date'])
+      .ignore();
   }
 
   await db('income_entries').where('id', id).del();

@@ -823,6 +823,34 @@ tr.editable:focus-visible {
   cursor: default;
   pointer-events: none;
 }
+/* Confirm is the recommended action on an expected row — one notch stronger than a plain row-btn. */
+.row-btn.confirm {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.row-btn.confirm:hover {
+  color: var(--ink);
+}
+
+/* expected (auto-generated, unconfirmed) entry rows — muted like a pending bank-statement line.
+   The date/note mute to --ink-3; the amount cell (the row's actual data) stays at the more
+   legible --ink-2 so the pending figure never drops below readable contrast. Hover reuses the
+   shared tr.editable:hover --paper wash (every expected row is also .editable). */
+tr.expected td {
+  color: var(--ink-3);
+}
+tr.expected td.r {
+  color: var(--ink-2);
+}
+.entry-tag {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
 
 /* shared range filter above the two-column layout (composed from tokens) */
 .range-filter {

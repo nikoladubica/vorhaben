@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../api';
 import type { IncomeEntry } from '../../types';
 import {
+  confirmEntry,
   createEntry,
   deleteEntry,
   listEntries,
@@ -71,6 +72,8 @@ export function EntriesSection({ projectId, from, to, currency }: EntriesSection
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  // Id of the expected row whose Confirm request is in flight (disables the buttons meanwhile).
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
 
   // Monotonically decreasing temporary id for optimistic rows (never collides with a real id).
   const tempIdRef = useRef(-1);
@@ -247,6 +250,24 @@ export function EntriesSection({ projectId, from, to, currency }: EntriesSection
     }
   }
 
+  // Confirm an auto-generated expected entry: the server flips it to source:'manual' and returns
+  // the updated row, which replaces the pending one in place (disabled-button while in flight).
+  async function onConfirm(id: number) {
+    if (id < 0 || confirmingId !== null) return;
+    setConfirmingId(id);
+    setError(null);
+    try {
+      const updated = await confirmEntry(id);
+      setEntries((prev) =>
+        prev.map((row) => (row.id === id ? updated : row)).sort(byNewest),
+      );
+    } catch {
+      setError('Could not confirm this entry. Please try again.');
+    } finally {
+      setConfirmingId(null);
+    }
+  }
+
   const summary = `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`;
   const addMessage = addError ?? firstError(addErrors);
 
@@ -388,10 +409,16 @@ export function EntriesSection({ projectId, from, to, currency }: EntriesSection
                   ) : (
                     <tr
                       key={entry.id}
-                      className="editable"
+                      className={
+                        entry.source === 'expected' ? 'editable expected' : 'editable'
+                      }
                       role="button"
                       tabIndex={0}
-                      aria-label={`Edit entry from ${formatDayMonth(entry.date)}`}
+                      aria-label={
+                        entry.source === 'expected'
+                          ? `Edit expected entry from ${formatDayMonth(entry.date)}`
+                          : `Edit entry from ${formatDayMonth(entry.date)}`
+                      }
                       onClick={() => startEdit(entry)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
@@ -401,7 +428,12 @@ export function EntriesSection({ projectId, from, to, currency }: EntriesSection
                       }}
                     >
                       <td className="num">{formatDayMonth(entry.date)}</td>
-                      <td>{entry.note}</td>
+                      <td>
+                        {entry.source === 'expected' && (
+                          <span className="entry-tag">Expected</span>
+                        )}
+                        {entry.note}
+                      </td>
                       <td className="r">{formatMoney(entry.amount, entry.currency)}</td>
                       <td className="r" onClick={(e) => e.stopPropagation()}>
                         {confirmId === entry.id ? (
@@ -423,15 +455,28 @@ export function EntriesSection({ projectId, from, to, currency }: EntriesSection
                             </button>
                           </span>
                         ) : (
-                          <button
-                            type="button"
-                            className="row-btn danger"
-                            aria-label={`Delete entry from ${formatDayMonth(entry.date)}`}
-                            onClick={() => setConfirmId(entry.id)}
-                            disabled={entry.id < 0}
-                          >
-                            Remove
-                          </button>
+                          <span className="row-actions">
+                            {entry.source === 'expected' && (
+                              <button
+                                type="button"
+                                className="row-btn confirm"
+                                aria-label={`Confirm expected entry from ${formatDayMonth(entry.date)}`}
+                                onClick={() => onConfirm(entry.id)}
+                                disabled={entry.id < 0 || confirmingId !== null}
+                              >
+                                Confirm
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="row-btn danger"
+                              aria-label={`Delete entry from ${formatDayMonth(entry.date)}`}
+                              onClick={() => setConfirmId(entry.id)}
+                              disabled={entry.id < 0}
+                            >
+                              Remove
+                            </button>
+                          </span>
                         )}
                       </td>
                     </tr>
