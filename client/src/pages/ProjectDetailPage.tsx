@@ -52,7 +52,7 @@ function deriveStatus(
   today: string,
 ): ProjectStatus {
   if (flag === 'idea' || start > today) return 'idea';
-  if (end !== null && end < today) return 'ended';
+  if (end !== null && end <= today) return 'ended';
   if (flag === 'paused') return 'paused';
   return 'active';
 }

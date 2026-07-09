@@ -49,7 +49,7 @@ so adding a new type later is a migration, not a refactor.
 ### 1.3 Lifecycle rules
 
 - A project with no end date is **active**.
-- Setting an end date in the past marks it **ended**; in the future, it stays active until then.
+- Setting an end date of **today or in the past** marks it **ended**; a future end date keeps it active until that date.
 - `paused` is a manual flag — the project is neither earning nor ended (e.g. a client on hold).
 - End date must be ≥ start date.
 - Ended projects are never deleted by default — history is the whole point. Deletion is

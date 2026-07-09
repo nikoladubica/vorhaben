@@ -26,8 +26,8 @@ export function deriveStatus({
 }: DeriveStatusInput): ProjectStatus {
   // 1. Not yet started (manual idea flag or a future start date).
   if (status_flag === 'idea' || start_date > today) return 'idea';
-  // 2. A past end date ends the project — this dominates a stale paused flag.
-  if (end_date !== null && end_date < today) return 'ended';
+  // 2. An end date of today or in the past ends the project — this dominates a stale paused flag.
+  if (end_date !== null && end_date <= today) return 'ended';
   // 3. Manual pause.
   if (status_flag === 'paused') return 'paused';
   // 4. Default.
