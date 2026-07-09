@@ -58,6 +58,16 @@ npm run dev
 | `npm run migrate` | Run database migrations |
 | `npm run migrate:rollback` | Roll back the last migration batch |
 
+## Documentation
+
+Deeper docs live in `.claude/docs/`:
+
+- [`backend/data-model.md`](.claude/docs/backend/data-model.md) — every table, columns, indexes, FKs.
+- [`backend/api.md`](.claude/docs/backend/api.md) — the full HTTP API, grouped by resource, with curl examples.
+- [`backend/normalization.md`](.claude/docs/backend/normalization.md) — how revenue and hourly-rate figures are computed.
+
+The full product spec lives in [`BUSINESS_LOGIC.md`](./BUSINESS_LOGIC.md).
+
 ## Contributing
 
 Issues and pull requests are welcome. This project is early-stage — expect the structure to
