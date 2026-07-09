@@ -2,7 +2,7 @@
 // credentials, JSON, and ApiError (with the 422 `fields` map) — see client/src/api.ts.
 
 import { api } from '../api';
-import type { Project, ProjectPayload, ProjectType } from '../types';
+import type { Project, ProjectMetrics, ProjectPayload, ProjectType } from '../types';
 
 export interface ProjectFilters {
   status?: string;
@@ -49,4 +49,10 @@ export function restoreProject(id: number): Promise<Project> {
 
 export function listProjectTypes(): Promise<ProjectType[]> {
   return api.get<ProjectType[]>('/project-types');
+}
+
+// The project's normalized headline figures (§2.2 / §8) for the detail-screen summary — same
+// canonical trailing-3-month window as the dashboard, in the user's base currency.
+export function getProjectMetrics(id: number): Promise<ProjectMetrics> {
+  return api.get<ProjectMetrics>(`/projects/${id}/metrics`);
 }

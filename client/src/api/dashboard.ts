@@ -14,6 +14,11 @@ export interface RankedProject {
   type: string;
   status: string;
   monthly_revenue: number | null;
+  // Expenses (§8): monthly_expenses is null when the project has no expenses; monthly_net is
+  // revenue − expenses (equals monthly_revenue when there are no expenses). The revenue ranking is
+  // ordered by monthly_net server-side; rows with expenses are labelled "net" in the UI.
+  monthly_expenses: number | null;
+  monthly_net: number | null;
   effective_hourly_rate: number | null;
   hours_in_window: number;
 }

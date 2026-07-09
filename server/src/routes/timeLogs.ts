@@ -14,11 +14,14 @@ export const timeLogsRouter = Router();
 // ---------------------------------------------------------------------------
 
 // time_logs row as returned by logSelect. `date` is DATE_FORMAT'd to a YYYY-MM-DD string;
-// `hours` arrives as a string from mysql2's decimal handling (no float drift).
+// `hours` arrives as a string from mysql2's decimal handling (no float drift). A log may span
+// `date` … `end_date` (inclusive) with `hours` as the TOTAL for the range; `end_date` is null
+// for the ordinary single-day log.
 interface TimeLogRow {
   id: number;
   project_id: number;
   date: string;
+  end_date: string | null;
   hours: string;
   note: string | null;
   created_at: Date;
@@ -30,6 +33,7 @@ function logSelect(executor: Knex | Knex.Transaction) {
     'id',
     'project_id',
     executor.raw("DATE_FORMAT(date, '%Y-%m-%d') as date"),
+    executor.raw("DATE_FORMAT(end_date, '%Y-%m-%d') as end_date"),
     'hours',
     'note',
     'created_at',
@@ -73,6 +77,7 @@ function parseHours(raw: unknown): number | null {
 // the decimal column.
 interface ValidatedLogColumns {
   date?: string;
+  end_date?: string | null;
   hours?: string | number;
   note?: string | null;
 }
@@ -84,7 +89,9 @@ type LogValidationResult =
 /**
  * Validate a create (partial=false) or update (partial=true) request body. On PATCH only
  * provided fields are validated. `date` and `hours` are NOT-NULL columns, so an explicit null
- * for either is rejected. `hours` must be strictly greater than 0 and at most 168.
+ * for either is rejected; `end_date` is nullable (null = single-day log). `hours` must be
+ * strictly greater than 0 — the upper cap depends on the range length, so it lives in
+ * validateLogRange (which both handlers run on the MERGED row).
  */
 function validateLogInput(
   body: Record<string, unknown>,
@@ -104,10 +111,25 @@ function validateLogInput(
     }
   }
 
-  // hours (0 < hours <= 168) ---------------------------------------------
+  // end_date (optional; null clears a range back to a single day) ---------
+  // On POST it may simply be absent — absent means single-day, not an error.
+  if (partial ? provided('end_date') : hasOwn(body, 'end_date')) {
+    const raw = body.end_date;
+    if (raw === null || raw === undefined) {
+      columns.end_date = null;
+    } else if (typeof raw !== 'string' || !isValidDate(raw)) {
+      fields.end_date = 'invalid';
+    } else {
+      columns.end_date = raw;
+    }
+  } else if (!partial) {
+    columns.end_date = null;
+  }
+
+  // hours (> 0; range-dependent cap checked in validateLogRange) ----------
   if (provided('hours')) {
     const parsed = parseHours(body.hours);
-    if (parsed === null || parsed <= 0 || parsed > 168) {
+    if (parsed === null || parsed <= 0) {
       fields.hours = 'invalid';
     } else {
       // Preserve an incoming string verbatim so "7.5" survives the decimal round-trip; a JSON
@@ -134,6 +156,35 @@ function validateLogInput(
     return { ok: false, fields };
   }
   return { ok: true, value: columns };
+}
+
+// Whole days from `from` to `to` inclusive (both 'YYYY-MM-DD'; UTC ms math, no DST drift).
+function rangeDays(from: string, to: string): number {
+  const fromMs = Date.parse(`${from}T00:00:00Z`);
+  const toMs = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((toMs - fromMs) / 86_400_000) + 1;
+}
+
+/**
+ * Cross-field rules on the FINAL row (POST: the validated body; PATCH: existing row merged with
+ * the patch): `end_date` must not precede `date`, and total `hours` must fit the range — at most
+ * 24 h per covered day, but never tighter than the original single-day allowance of 168.
+ */
+function validateLogRange(
+  date: string,
+  endDate: string | null,
+  hours: string | number,
+): Record<string, string> {
+  const fields: Record<string, string> = {};
+  const end = endDate ?? date;
+  if (end < date) {
+    fields.end_date = 'invalid';
+    return fields;
+  }
+  const cap = Math.max(168, 24 * rangeDays(date, end));
+  const parsed = typeof hours === 'number' ? hours : Number(hours);
+  if (parsed > cap) fields.hours = 'invalid';
+  return fields;
 }
 
 // Parse a :id route param to a positive integer, or null when it is not one (→ 404).
@@ -175,9 +226,11 @@ projectTimeLogsRouter.get('/:id/time-logs', async (req, res) => {
     return;
   }
 
+  // A log matches when its covered range [date, end_date ?? date] OVERLAPS the filter — a
+  // multi-day log whose tail reaches into the range still shows.
   const query = logSelect(db).where('project_id', id);
   if (typeof from === 'string' && from !== '') {
-    query.andWhere('date', '>=', from);
+    query.andWhereRaw('COALESCE(end_date, date) >= ?', [from]);
   }
   if (typeof to === 'string' && to !== '') {
     query.andWhere('date', '<=', to);
@@ -211,9 +264,20 @@ projectTimeLogsRouter.post('/:id/time-logs', async (req, res) => {
     return;
   }
 
+  const rangeFields = validateLogRange(
+    result.value.date as string,
+    result.value.end_date ?? null,
+    result.value.hours as string | number,
+  );
+  if (Object.keys(rangeFields).length > 0) {
+    res.status(422).json({ error: 'validation', fields: rangeFields });
+    return;
+  }
+
   const [logId] = await db('time_logs').insert({
     project_id: id,
     date: result.value.date,
+    end_date: result.value.end_date ?? null,
     hours: result.value.hours,
     note: result.value.note ?? null,
   });
@@ -260,6 +324,18 @@ timeLogsRouter.patch('/:id', async (req, res) => {
   const result = validateLogInput(body, true);
   if (!result.ok) {
     res.status(422).json({ error: 'validation', fields: result.fields });
+    return;
+  }
+
+  // Cross-field rules need the FINAL row, so merge the patch over the current values.
+  const current = (await logSelect(db).where('id', id).first()) as TimeLogRow;
+  const rangeFields = validateLogRange(
+    result.value.date ?? current.date,
+    result.value.end_date !== undefined ? result.value.end_date : current.end_date,
+    result.value.hours ?? current.hours,
+  );
+  if (Object.keys(rangeFields).length > 0) {
+    res.status(422).json({ error: 'validation', fields: rangeFields });
     return;
   }
 

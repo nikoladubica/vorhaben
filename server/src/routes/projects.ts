@@ -12,6 +12,7 @@ import {
   type StatusFlag,
 } from '../domain/projectStatus.js';
 import { syncProjectTags } from '../db/tags.js';
+import { computeMetricsForUser } from '../domain/metrics.js';
 
 export const projectsRouter = Router();
 
@@ -347,6 +348,13 @@ function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Round a display money figure to 2dp; null (no data) passes through untouched. Mirrors the
+// dashboard's edge-rounding rule — the normalization layer keeps full precision, the API rounds.
+function roundMoney(value: number | null): number | null {
+  if (value === null) return null;
+  return Math.round(value * 100) / 100;
+}
+
 // ---------------------------------------------------------------------------
 // Routes (mounted behind requireAuth; every query scoped to req.userId)
 // ---------------------------------------------------------------------------
@@ -439,6 +447,45 @@ projectsRouter.get('/:id', async (req, res) => {
     return;
   }
   res.json(project);
+});
+
+// GET /api/projects/:id/metrics — the single project's normalized headline figures, drawn from
+// the SAME canonical trailing-3-month window as the dashboard (computeMetricsForUser is the one
+// normalization entry point — we never call the pure layer directly). Powers the detail screen's
+// revenue / expenses / net summary. `/:id` above is a single segment, so it never captures this
+// two-segment path regardless of route order. Money figures are rounded to 2dp for display, in
+// the user's base currency; nulls (no contributing entries / no logged hours) pass through.
+projectsRouter.get('/:id/metrics', async (req, res) => {
+  const userId = req.userId as number;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+
+  // Ownership + existence check (also 404s a soft-deleted project) before any computation.
+  const project = await fetchOwnedProject(db, userId, id);
+  if (!project) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+
+  const user = await db('users').where('id', userId).first('base_currency');
+  const baseCurrency = (user as { base_currency: string } | undefined)?.base_currency ?? 'EUR';
+
+  const metrics = await computeMetricsForUser(userId);
+  const m = metrics.get(id);
+
+  res.json({
+    project_id: id,
+    base_currency: baseCurrency,
+    total_revenue: roundMoney(m?.totalRevenue ?? null),
+    monthly_revenue: roundMoney(m?.monthlyRevenue ?? null),
+    monthly_expenses: roundMoney(m?.monthlyExpenses ?? null),
+    monthly_net: roundMoney(m?.monthlyNet ?? null),
+    effective_hourly_rate: roundMoney(m?.effectiveHourlyRate ?? null),
+    hours_in_window: m?.hoursInWindow ?? 0,
+  });
 });
 
 // PATCH /api/projects/:id — partial update.

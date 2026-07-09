@@ -15,18 +15,19 @@ import type { CompensationModel } from './constants.js';
 // ---------------------------------------------------------------------------
 //
 // This is the thin adapter between the database and the pure normalization engine. It reads a
-// user's projects, entries and time logs with a BOUNDED number of queries (five, regardless of
-// project count: projects, all entries, all time logs, fx rates, user), converts each entry to
-// the user's base currency via fx.ts, then hands the fully-materialized fixtures to
-// computeProjectMetrics(). Tickets 09 (API) and 10 (dashboard) call this and nothing lower.
+// user's projects, entries, expenses and time logs with a BOUNDED number of queries (six,
+// regardless of project count: projects, all income entries, all expense entries, all time logs,
+// fx rates, user), converts each entry to the user's base currency via fx.ts, then hands the
+// fully-materialized fixtures to computeProjectMetrics(). Tickets 09 (API) and 10 (dashboard)
+// call this and nothing lower.
 //
 // One extra pass precedes those five queries: for SALARIED projects only (typically a handful),
 // ensureExpectedEntries lazily materializes any missing expected entries so their revenue shows
 // up here without a scheduler (BUSINESS_LOGIC.md §2.1). Non-salaried projects add no query.
 //
-// Query strategy: entries and time logs are loaded for the whole project set in ONE grouped
-// query each (whereIn project ids), with NO date filter. The `fixed` model needs every one of
-// its entries (full-duration amortization), and letting the pure layer apply the trailing
+// Query strategy: entries, expenses and time logs are loaded for the whole project set in ONE
+// grouped query each (whereIn project ids), with NO date filter. The `fixed` model needs every
+// one of its entries (full-duration amortization), and letting the pure layer apply the trailing
 // window keeps all date logic in the tested module — so we load everything and window in memory.
 // This is bounded by query COUNT, which is the acceptance criterion, not by row volume.
 
@@ -49,6 +50,7 @@ interface EntryRow {
 interface TimeLogRow {
   project_id: number;
   date: string;
+  end_date: string | null;
   hours: string;
 }
 
@@ -94,9 +96,18 @@ export async function computeMetricsForUser(
 
   const projectIds = projects.map((p) => p.id);
 
-  // 3 & 4. All entries and all time logs for the project set — one grouped query each, no date
-  // filter (see query-strategy note above).
+  // 3, 4 & 5. All income entries, all expense entries and all time logs for the project set — one
+  // grouped query each, no date filter (see query-strategy note above).
   const entryRows = await db('income_entries')
+    .whereIn('project_id', projectIds)
+    .select<EntryRow[]>(
+      'project_id',
+      db.raw("DATE_FORMAT(date, '%Y-%m-%d') as date"),
+      'amount',
+      'currency',
+    );
+
+  const expenseRows = await db('expense_entries')
     .whereIn('project_id', projectIds)
     .select<EntryRow[]>(
       'project_id',
@@ -107,9 +118,14 @@ export async function computeMetricsForUser(
 
   const timeLogRows = await db('time_logs')
     .whereIn('project_id', projectIds)
-    .select<TimeLogRow[]>('project_id', db.raw("DATE_FORMAT(date, '%Y-%m-%d') as date"), 'hours');
+    .select<TimeLogRow[]>(
+      'project_id',
+      db.raw("DATE_FORMAT(date, '%Y-%m-%d') as date"),
+      db.raw("DATE_FORMAT(end_date, '%Y-%m-%d') as end_date"),
+      'hours',
+    );
 
-  // 5. FX rates for the base currency, loaded once for all conversions.
+  // 6. FX rates for the base currency, loaded once for all conversions.
   const rates = await loadRates(baseCurrency);
 
   // Group entries by project, converting each at its own date. fx.ts returns fixed-2dp strings;
@@ -124,10 +140,22 @@ export async function computeMetricsForUser(
     });
   }
 
+  // Same grouping + conversion for expenses (positive amounts = money out).
+  const expensesByProject = new Map<number, MetricsEntry[]>();
+  for (const row of expenseRows) {
+    const conversion = convert(row.amount, row.currency, baseCurrency, row.date, rates);
+    pushToGroup(expensesByProject, row.project_id, {
+      date: row.date,
+      converted: Number(conversion.converted),
+      missingRate: conversion.missing_rate,
+    });
+  }
+
   const logsByProject = new Map<number, MetricsTimeLog[]>();
   for (const row of timeLogRows) {
     pushToGroup(logsByProject, row.project_id, {
       date: row.date,
+      endDate: row.end_date,
       hours: Number(row.hours),
     });
   }
@@ -147,6 +175,7 @@ export async function computeMetricsForUser(
         entriesByProject.get(project.id) ?? [],
         logsByProject.get(project.id) ?? [],
         { asOf, window },
+        expensesByProject.get(project.id) ?? [],
       ),
     );
   }

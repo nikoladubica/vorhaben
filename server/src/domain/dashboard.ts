@@ -36,6 +36,12 @@ export interface RankedProject {
   type: string;
   status: string;
   monthly_revenue: number | null;
+  // Expenses (§8): monthly_expenses is null when the project has no expense entries; monthly_net
+  // is revenue − expenses (and equals monthly_revenue exactly when there are no expenses). The
+  // revenue ranking sorts by monthly_net — profit is the truer "value" number — but all three
+  // travel in the payload so the client can label rows with expenses as "net".
+  monthly_expenses: number | null;
+  monthly_net: number | null;
   effective_hourly_rate: number | null;
   hours_in_window: number;
 }
@@ -203,18 +209,22 @@ export async function buildDashboard(
       type: meta.type,
       status: meta.status,
       monthly_revenue: roundMoney(m?.monthlyRevenue ?? null),
+      monthly_expenses: roundMoney(m?.monthlyExpenses ?? null),
+      monthly_net: roundMoney(m?.monthlyNet ?? null),
       effective_hourly_rate: roundMoney(m?.effectiveHourlyRate ?? null),
       hours_in_window: m?.hoursInWindow ?? 0,
     });
   }
 
   // Two independent rankings, never a blended score.
-  // by_monthly_revenue: descending, nulls last (a project with no revenue still lists).
+  // by_monthly_revenue: ranked by monthly NET (profit — the truer value where expenses exist;
+  // net === revenue for projects without any), descending, nulls last (a project with no revenue
+  // or expenses still lists).
   const byMonthlyRevenue = [...ranked].sort((a, b) => {
-    if (a.monthly_revenue === null && b.monthly_revenue === null) return 0;
-    if (a.monthly_revenue === null) return 1;
-    if (b.monthly_revenue === null) return -1;
-    return b.monthly_revenue - a.monthly_revenue;
+    if (a.monthly_net === null && b.monthly_net === null) return 0;
+    if (a.monthly_net === null) return 1;
+    if (b.monthly_net === null) return -1;
+    return b.monthly_net - a.monthly_net;
   });
   // by_hourly_rate: descending; projects with a null rate are EXCLUDED entirely.
   const byHourlyRate = ranked

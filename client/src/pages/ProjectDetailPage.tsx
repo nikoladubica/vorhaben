@@ -4,15 +4,21 @@
 // months, the normalization window). Per-project metrics/notes are later tickets (mount points
 // below). Status is derived, never free-set — the local deriveStatus mirrors the server (§1.3).
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type {
   Project,
+  ProjectMetrics,
   ProjectPayload,
   ProjectStatus,
   ProjectType,
 } from '../types';
-import { getProject, listProjectTypes, updateProject } from '../api/projects';
+import {
+  getProject,
+  getProjectMetrics,
+  listProjectTypes,
+  updateProject,
+} from '../api/projects';
 import {
   COMPENSATION_CONFIG,
   modelHasAmount,
@@ -25,6 +31,7 @@ import {
 } from '../domain/format';
 import { StatusBadge } from '../components/projects/StatusBadge';
 import { EntriesSection } from '../components/entries/EntriesSection';
+import { ExpensesSection } from '../components/entries/ExpensesSection';
 import { TimeLogsSection } from '../components/entries/TimeLogsSection';
 import { NotesSection } from '../components/notes/NotesSection';
 
@@ -99,10 +106,16 @@ export function ProjectDetailPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [types, setTypes] = useState<ProjectType[]>([]);
+  // Normalized revenue / expenses / net summary (§8). Optional garnish, like the dashboard's
+  // suggestions: a failed fetch simply hides the line and never blocks the rest of the screen.
+  const [metrics, setMetrics] = useState<ProjectMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  // Bumped when the time-log panel creates an income entry, so the income panel reloads (its
+  // reload calls onChanged, which refreshes the header metrics in turn).
+  const [entriesReload, setEntriesReload] = useState(0);
 
   // Default range: last 3 months. Read from the URL so the view is shareable; when absent the
   // defaults apply in-memory (they are written to the URL only once the user edits a bound).
@@ -140,6 +153,16 @@ export function ProjectDetailPage() {
       .then(setTypes)
       .catch(() => setTypes([]));
   }, []);
+
+  // Reload the normalized summary. Passed to both entry sections as `onChanged` so the figures
+  // stay in step with income/expense edits. The metrics use the canonical trailing-3-month window
+  // (not the detail screen's range filter), so they do not depend on `from`/`to`.
+  const refreshMetrics = useCallback(() => {
+    if (projectId === null || !Number.isInteger(projectId)) return;
+    getProjectMetrics(projectId)
+      .then(setMetrics)
+      .catch(() => setMetrics(null));
+  }, [projectId]);
 
   const typeLabel = useMemo(() => {
     if (!project) return '';
@@ -202,6 +225,11 @@ export function ProjectDetailPage() {
   const toggleLabel = project.status === 'active' ? 'Pause' : 'Resume';
   const toggleTo: ProjectStatus = project.status === 'active' ? 'paused' : 'active';
   const currency = project.rate_currency ?? 'CHF';
+  // Three-figure normalized summary (base currency). A null figure shows an em dash; the
+  // "expenses" and "net" items only carry weight once expenses exist, but net always renders
+  // (it equals revenue when there are none).
+  const summaryFigure = (value: number | null): string =>
+    value === null ? '—' : formatMoney(String(value), metrics?.base_currency ?? currency);
   const rateDisplay =
     project.rate_amount === null
       ? '—'
@@ -286,6 +314,30 @@ export function ProjectDetailPage() {
         </p>
       )}
 
+      {metrics && (
+        <div className="pd-summary num">
+          <span className="pd-sum-note">monthly-equivalent · trailing 3 months</span>
+          <div className="pd-sum-row">
+            <span className="pd-sum-item">
+              <span className="l">Projected revenue</span>
+              <b>{summaryFigure(metrics.monthly_revenue)}</b>
+            </span>
+            <span className="pd-sum-item">
+              <span className="l">Expenses</span>
+              <b>{summaryFigure(metrics.monthly_expenses)}</b>
+            </span>
+            <span className="pd-sum-item net">
+              <span className="l">Net</span>
+              <b>{summaryFigure(metrics.monthly_net)}</b>
+            </span>
+            <span className="pd-sum-item total">
+              <span className="l">Total revenue</span>
+              <b>{summaryFigure(metrics.total_revenue)}</b>
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="range-filter">
         <span className="range-label">Showing</span>
         <label>
@@ -315,8 +367,26 @@ export function ProjectDetailPage() {
             from={from}
             to={to}
             currency={currency}
+            onChanged={refreshMetrics}
+            reloadKey={entriesReload}
           />
-          <TimeLogsSection projectId={project.id} from={from} to={to} />
+          <ExpensesSection
+            projectId={project.id}
+            from={from}
+            to={to}
+            currency={currency}
+            onChanged={refreshMetrics}
+          />
+          <TimeLogsSection
+            projectId={project.id}
+            from={from}
+            to={to}
+            currency={currency}
+            hourlyRate={
+              project.compensation_model === 'hourly' ? project.rate_amount : null
+            }
+            onInvoiced={() => setEntriesReload((k) => k + 1)}
+          />
           <NotesSection projectId={project.id} />
         </div>
 
@@ -348,7 +418,9 @@ export function ProjectDetailPage() {
               </div>
             </div>
           </div>
-          {/* TODO(ticket 15): per-project metrics/chart — dashboard endpoint doesn't expose them yet */}
+          {/* The normalized revenue / expenses / net figures now surface in the header summary
+              via GET /api/projects/:id/metrics (ticket 18). A fuller per-project trend chart in
+              this column is still open future work. */}
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth.js';
 import { projectsRouter } from './routes/projects.js';
 import { projectTypesRouter } from './routes/projectTypes.js';
 import { projectEntriesRouter, entriesRouter } from './routes/incomeEntries.js';
+import { projectExpensesRouter, expensesRouter } from './routes/expenseEntries.js';
 import { projectTimeLogsRouter, timeLogsRouter } from './routes/timeLogs.js';
 import { projectNotesRouter, notesRouter } from './routes/notes.js';
 import { fxRatesRouter } from './routes/fxRates.js';
@@ -32,6 +33,9 @@ app.use('/api/projects', requireAuth, projectsRouter);
 // Nested income-entry routes (/:id/entries) share the /api/projects mount; /:id is a single
 // segment so it never captures /:id/entries, and projectsRouter falls through to here.
 app.use('/api/projects', requireAuth, projectEntriesRouter);
+// Nested expense-entry routes (/:id/expenses) share the /api/projects mount, same single-segment
+// /:id pattern as the income-entry routes above, so /:id never captures /:id/expenses.
+app.use('/api/projects', requireAuth, projectExpensesRouter);
 // Nested time-log routes (/:id/time-logs) share the /api/projects mount, same pattern as the
 // entry routes above: /:id is a single segment so it never captures /:id/time-logs.
 app.use('/api/projects', requireAuth, projectTimeLogsRouter);
@@ -40,6 +44,7 @@ app.use('/api/projects', requireAuth, projectTimeLogsRouter);
 app.use('/api/projects', requireAuth, projectNotesRouter);
 app.use('/api/project-types', requireAuth, projectTypesRouter);
 app.use('/api/entries', requireAuth, entriesRouter);
+app.use('/api/expenses', requireAuth, expensesRouter);
 app.use('/api/time-logs', requireAuth, timeLogsRouter);
 app.use('/api/notes', requireAuth, notesRouter);
 app.use('/api/fx-rates', requireAuth, fxRatesRouter);

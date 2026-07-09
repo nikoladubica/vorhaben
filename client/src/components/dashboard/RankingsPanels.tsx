@@ -25,25 +25,38 @@ export function RankingsPanels({
   const tip = useTooltip();
 
   // Bar widths are proportional to the largest value IN THAT LIST (each panel has its own scale).
+  // The revenue panel ranks by monthly NET (profit) — which equals revenue for projects without
+  // expenses — so the bar/value use monthly_net throughout.
   const maxRevenue = Math.max(
     0,
-    ...byMonthlyRevenue.map((p) => p.monthly_revenue ?? 0),
+    ...byMonthlyRevenue.map((p) => p.monthly_net ?? 0),
   );
   const maxRate = Math.max(0, ...byHourlyRate.map((p) => p.effective_hourly_rate ?? 0));
 
   function revenueRow(project: RankedProject, index: number) {
-    const value = project.monthly_revenue;
+    const value = project.monthly_net;
     const width = maxRevenue > 0 && value !== null ? (value / maxRevenue) * 100 : 0;
     const display = value === null ? '—' : formatMoney(String(value), baseCurrency);
     // A project absent from the hourly ranking (null rate) gets a hint here so users learn that
     // logging hours unlocks the second, often more revealing, ranking.
     const noHours = project.effective_hourly_rate === null;
+    // Expenses (§8): a project with any expenses shows a "net" tag and a revenue − expenses
+    // breakdown in the tooltip. Projects without expenses render exactly as before (net === revenue).
+    const hasExpenses = project.monthly_expenses !== null;
     const content = (
       <>
         <div>
           {project.name} · <b>{display}</b>
+          {hasExpenses ? ' net' : ''}
         </div>
-        <div>monthly-equivalent · trailing 3 months</div>
+        {hasExpenses ? (
+          <div>
+            {formatMoney(String(project.monthly_revenue ?? 0), baseCurrency)} revenue −{' '}
+            {formatMoney(String(project.monthly_expenses ?? 0), baseCurrency)} expenses
+          </div>
+        ) : (
+          <div>monthly-equivalent · trailing 3 months</div>
+        )}
       </>
     );
     return (
@@ -59,6 +72,7 @@ export function RankingsPanels({
         <span className="n">
           {project.name}
           <small>{typeLabel(project.type)}</small>
+          {hasExpenses && <small className="hint">net /mo</small>}
           {noHours && <small className="hint">no hours logged</small>}
         </span>
         <span className="rbar">

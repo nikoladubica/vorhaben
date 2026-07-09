@@ -30,10 +30,21 @@ import type { CompensationModel } from './constants.js';
 //    manifest their ×26÷12 / ×52÷12 factors purely through the entry amounts the user (or the
 //    auto-generator) records, and flow through the same windowed sum as everything else.
 //
-//  • Effective hourly rate. WINDOWED converted revenue ÷ hours logged in the SAME window — for
-//    every model, `fixed` included (the amortized monthly figure is never used here). It is
-//    `null` when the window has zero logged hours: we never divide by zero and never fabricate a
-//    rate from a nominal hourly rate the user configured.
+//  • Expenses & net (BUSINESS_LOGIC.md §8). Optional expense entries (positive = money out) turn
+//    revenue into profit. `monthlyExpenses` is computed by the SAME path as revenue (windowed sum
+//    ÷ window months; the `fixed` model amortizes over the full engagement), and is `null` when
+//    the project has no contributing expense entries. `monthlyNet` = revenue − expenses, treating
+//    a null side as 0, and is `null` only when BOTH sides are null. A project with zero expenses
+//    therefore keeps `monthlyNet === monthlyRevenue` — its numbers are unchanged.
+//
+//  • Effective hourly rate. WINDOWED NET (converted revenue − converted expenses in the window)
+//    ÷ hours logged in the SAME window — the "value for your time" question is about what you
+//    KEEP. A multi-day log (date … endDate, hours = range total) contributes its hours prorated
+//    by the share of its covered days that fall inside the window.
+//    For every model, `fixed` included (the amortized monthly figure is never used here).
+//    It is `null` when the window has zero logged hours: we never divide by zero and never
+//    fabricate a rate from a nominal hourly rate the user configured. With no expenses the
+//    windowed expense sum is 0, so the rate equals windowed revenue ÷ hours as before.
 //
 //  • Month arithmetic. Fractional months = span-in-days ÷ 30.44 (the mean Gregorian month
 //    length), so a 45-day span ≈ 1.478 months and the full trailing window ≈ 2.99 months.
@@ -70,8 +81,9 @@ export interface MetricsEntry {
 }
 
 export interface MetricsTimeLog {
-  date: string; // 'YYYY-MM-DD'
-  hours: number;
+  date: string; // 'YYYY-MM-DD' — start of the covered range
+  endDate?: string | null; // inclusive range end; null/absent = single-day log
+  hours: number; // TOTAL for the whole covered range
 }
 
 export interface NormalizationOptions {
@@ -86,11 +98,14 @@ export interface NormalizationOptions {
 // ---------------------------------------------------------------------------
 
 export interface ProjectMetrics {
-  monthlyRevenue: number | null; // null when no contributing entries exist for the window
-  effectiveHourlyRate: number | null; // null when no hours were logged in the window
+  totalRevenue: number | null; // all-time sum of every income entry (converted); null when none exist
+  monthlyRevenue: number | null; // null when no contributing income entries exist for the window
+  monthlyExpenses: number | null; // null when no contributing expense entries exist for the window
+  monthlyNet: number | null; // revenue − expenses; null only when BOTH sides are null
+  effectiveHourlyRate: number | null; // net ÷ windowed hours; null when no hours were logged
   hoursInWindow: number;
-  entryCount: number; // contributing entries: windowed for most models, ALL for `fixed`
-  missingRates: boolean; // any contributing entry fell back unconverted (fx missing_rate)
+  entryCount: number; // contributing income entries: windowed for most models, ALL for `fixed`
+  missingRates: boolean; // any contributing income OR expense entry fell back unconverted
   window: { from: string; to: string; months: number };
 }
 
@@ -102,17 +117,21 @@ export interface ProjectMetrics {
  * Compute the monthly-equivalent revenue and effective hourly rate for a single project.
  *
  * @param project  compensation model + lifecycle dates (drives fixed amortization + shortening).
- * @param entries  ALL of the project's entries, already converted to base currency. The window
- *                 filter is applied here, so callers hand over the full set (the `fixed` path
- *                 needs every entry, and letting this layer window keeps the date logic testable).
+ * @param entries  ALL of the project's income entries, already converted to base currency. The
+ *                 window filter is applied here, so callers hand over the full set (the `fixed`
+ *                 path needs every entry, and letting this layer window keeps the date logic
+ *                 testable).
  * @param timeLogs ALL of the project's time logs; windowed here.
  * @param options  reference date + optional explicit window.
+ * @param expenses ALL of the project's expense entries (positive = money out), already converted.
+ *                 Optional and defaults to none, so a project with no expenses is unchanged.
  */
 export function computeProjectMetrics(
   project: MetricsProject,
   entries: MetricsEntry[],
   timeLogs: MetricsTimeLog[],
   options: NormalizationOptions,
+  expenses: MetricsEntry[] = [],
 ): ProjectMetrics {
   const { asOf } = options;
 
@@ -127,45 +146,103 @@ export function computeProjectMetrics(
 
   // --- Windowed aggregates ----------------------------------------------
   const windowedEntries = entries.filter((e) => e.date >= from && e.date <= to);
+  const windowedExpenses = expenses.filter((e) => e.date >= from && e.date <= to);
   const windowedRevenue = sumConverted(windowedEntries);
+  const windowedExpenseTotal = sumConverted(windowedExpenses);
 
+  // A log may cover a range of days with `hours` as the range TOTAL. Hours count toward the
+  // window PRORATED by the share of covered days that fall inside it (a single-day log inside
+  // the window contributes exactly its hours, as before).
   let hoursInWindow = 0;
   for (const log of timeLogs) {
-    if (log.date >= from && log.date <= to) hoursInWindow += log.hours;
+    const logEnd = log.endDate ?? log.date;
+    const overlapFrom = maxDate(from, log.date);
+    const overlapTo = logEnd < to ? logEnd : to;
+    const overlapDays = daysBetween(overlapFrom, overlapTo) + 1;
+    if (overlapDays <= 0) continue;
+    const coveredDays = daysBetween(log.date, logEnd) + 1;
+    hoursInWindow += log.hours * (overlapDays / coveredDays);
   }
 
-  // --- Contributing set (drives entryCount, missingRates, monthlyRevenue) -
+  // --- Contributing sets (drive counts, missingRates, monthly figures) --
+  // The `fixed` model amortizes over the whole engagement, so it contributes ALL entries; every
+  // other model contributes only the windowed ones. Income and expenses follow the same rule.
   const isFixed = project.compensationModel === 'fixed';
   const contributingEntries = isFixed ? entries : windowedEntries;
+  const contributingExpenses = isFixed ? expenses : windowedExpenses;
   const entryCount = contributingEntries.length;
-  const missingRates = contributingEntries.some((e) => e.missingRate);
+  const missingRates =
+    contributingEntries.some((e) => e.missingRate) ||
+    contributingExpenses.some((e) => e.missingRate);
 
-  // --- Monthly-equivalent revenue ---------------------------------------
-  let monthlyRevenue: number | null;
-  if (entryCount === 0) {
-    // No data to normalize for this window/project.
-    monthlyRevenue = null;
-  } else if (isFixed) {
-    // Amortize the total over the whole engagement, not the trailing window.
-    const durationEnd = project.endDate ?? asOf;
-    const durationMonths = Math.max(0, daysBetween(project.startDate, durationEnd)) / DAYS_PER_MONTH;
-    monthlyRevenue = durationMonths > 0 ? sumConverted(entries) / durationMonths : null;
-  } else {
-    monthlyRevenue = windowMonths > 0 ? windowedRevenue / windowMonths : null;
-  }
+  // Duration months for the `fixed` amortization path (start → end, or → asOf while ongoing).
+  const durationEnd = project.endDate ?? asOf;
+  const durationMonths = Math.max(0, daysBetween(project.startDate, durationEnd)) / DAYS_PER_MONTH;
+
+  // --- Monthly-equivalent revenue & expenses (identical normalization) --
+  const monthlyRevenue = monthlyEquivalent(
+    isFixed,
+    entries,
+    windowedRevenue,
+    windowMonths,
+    durationMonths,
+    entryCount,
+  );
+  const monthlyExpenses = monthlyEquivalent(
+    isFixed,
+    expenses,
+    windowedExpenseTotal,
+    windowMonths,
+    durationMonths,
+    contributingExpenses.length,
+  );
+
+  // Net = revenue − expenses, treating a null side as 0; null only when both are null so a
+  // zero-expense project keeps monthlyNet === monthlyRevenue.
+  const monthlyNet =
+    monthlyRevenue === null && monthlyExpenses === null
+      ? null
+      : (monthlyRevenue ?? 0) - (monthlyExpenses ?? 0);
+
+  // All-time gross revenue — no window, no amortization. The raw "how much has this project
+  // paid in total" figure the UI shows next to the normalized ones.
+  const totalRevenue = entries.length > 0 ? sumConverted(entries) : null;
 
   // --- Effective hourly rate --------------------------------------------
-  // Always windowed revenue over windowed hours; never the amortized figure, never zero-divide.
-  const effectiveHourlyRate = hoursInWindow > 0 ? windowedRevenue / hoursInWindow : null;
+  // Always WINDOWED NET (revenue − expenses in the window) over windowed hours; never the
+  // amortized figure, never zero-divide.
+  const effectiveHourlyRate =
+    hoursInWindow > 0 ? (windowedRevenue - windowedExpenseTotal) / hoursInWindow : null;
 
   return {
+    totalRevenue,
     monthlyRevenue,
+    monthlyExpenses,
+    monthlyNet,
     effectiveHourlyRate,
     hoursInWindow,
     entryCount,
     missingRates,
     window: { from, to, months: windowMonths },
   };
+}
+
+// Monthly-equivalent figure for one stream (income or expenses), applying §2.2's two paths: the
+// `fixed` model amortizes ALL entries over the full engagement duration; every other model
+// divides the windowed sum by the window length. Returns null when nothing contributes.
+function monthlyEquivalent(
+  isFixed: boolean,
+  allEntries: MetricsEntry[],
+  windowedSum: number,
+  windowMonths: number,
+  durationMonths: number,
+  contributingCount: number,
+): number | null {
+  if (contributingCount === 0) return null;
+  if (isFixed) {
+    return durationMonths > 0 ? sumConverted(allEntries) / durationMonths : null;
+  }
+  return windowMonths > 0 ? windowedSum / windowMonths : null;
 }
 
 function sumConverted(entries: MetricsEntry[]): number {

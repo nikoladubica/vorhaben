@@ -698,6 +698,51 @@ table.projects th.r {
   color: var(--ink-2);
 }
 
+/* revenue / expenses / net summary strip (ticket 18) — normalized base-currency figures, with
+   the all-time total at the far right. The window note is red by explicit product decision — a
+   deliberate exception to the one-red-per-view rule so the "these are projections" caveat is
+   impossible to miss. */
+.pd-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+}
+.pd-sum-row {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.pd-sum-item.total {
+  margin-left: auto;
+}
+.pd-sum-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pd-sum-item .l {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.pd-sum-item b {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.pd-sum-note {
+  font-size: 11px;
+  color: var(--red);
+}
+
 /* two-column layout + key/value compensation panel (from the design file) */
 .cols {
   display: grid;
@@ -740,8 +785,22 @@ table.projects th.r {
   margin-bottom: 14px;
   align-items: center;
 }
-.entry-add.income {
+.entry-add.income,
+.entry-add.expense {
   grid-template-columns: 110px 1fr 120px 72px auto;
+}
+/* time-log quick-add: from + optional to (one multi-day log carrying the total hours) */
+.entry-add.timelog {
+  grid-template-columns: 110px 110px 1fr 100px auto;
+}
+/* combined income entry from selected time logs: date, note, amount, fixed currency, submit */
+.entry-add.invoice {
+  grid-template-columns: 110px 1fr 120px 48px auto;
+  margin-bottom: 10px;
+}
+.entry-add .cur {
+  font-size: 12px;
+  color: var(--ink-2);
 }
 .entry-add input {
   font-family: var(--sans);
@@ -761,6 +820,41 @@ table.projects th.r {
 }
 .quick-add-error {
   margin: -6px 0 14px;
+}
+
+/* tracking-only disclaimer under a panel header (time logged) */
+.panel-note {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* time-log inline edit: start + end date stacked in the date cell */
+.cell-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* time-log selection: checkbox column + the "n logs · x h selected" action bar */
+.projects th.sel,
+.projects td.sel {
+  width: 28px;
+  padding-right: 0;
+}
+.select-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  font-size: 12px;
+}
+.select-bar > span {
+  margin-right: auto;
+  color: var(--ink-2);
 }
 
 /* inline row editing + per-row actions in the entry / time-log tables (composed from tokens) */
@@ -1552,7 +1646,8 @@ a.tl-row:hover .tl-n {
     grid-template-columns: 1fr;
   }
   .entry-add,
-  .entry-add.income {
+  .entry-add.income,
+  .entry-add.expense {
     grid-template-columns: 1fr 1fr;
   }
   .fx-add {
