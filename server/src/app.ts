@@ -15,6 +15,7 @@ import { fxRatesRouter } from './routes/fxRates.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { accountRouter } from './routes/account.js';
 import { tagsRouter } from './routes/tags.js';
+import { exportRouter, importRouter } from './routes/exportImport.js';
 
 export const app = express();
 
@@ -51,6 +52,11 @@ app.use('/api/fx-rates', requireAuth, fxRatesRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
 app.use('/api/account', requireAuth, accountRouter);
 app.use('/api/tags', requireAuth, tagsRouter);
+// CSV export/import (§8). Export streams one table per request; import parses a raw CSV text body
+// (its own express.text parser with a 10 MB ceiling lives on the route, and an overflow surfaces
+// as the shared 413 below).
+app.use('/api/export', requireAuth, exportRouter);
+app.use('/api/import', requireAuth, importRouter);
 
 // Body-parser overflow handler. A payload above the 2mb parser ceiling throws before any route
 // runs; catch just that case and answer with a consistent JSON 413 (instead of Express's default

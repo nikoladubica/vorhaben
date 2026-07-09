@@ -6,13 +6,15 @@ import { useState } from 'react';
 import { AccountSection } from '../components/settings/AccountSection';
 import { FxRatesSection } from '../components/settings/FxRatesSection';
 import { TagsSection } from '../components/settings/TagsSection';
+import { DataSection } from '../components/settings/DataSection';
 
-type SectionId = 'account' | 'currency' | 'tags';
+type SectionId = 'account' | 'currency' | 'tags' | 'data';
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'account', label: 'Account' },
   { id: 'currency', label: 'Currency & rates' },
   { id: 'tags', label: 'Tags' },
+  { id: 'data', label: 'Data' },
 ];
 
 export function SettingsPage() {
@@ -43,6 +45,7 @@ export function SettingsPage() {
           {active === 'account' && <AccountSection />}
           {active === 'currency' && <FxRatesSection />}
           {active === 'tags' && <TagsSection />}
+          {active === 'data' && <DataSection />}
         </div>
       </div>
     </div>

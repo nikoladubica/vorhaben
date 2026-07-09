@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from './auth/RequireAuth';
+import { useAuth } from './auth/useAuth';
 import { AppLayout } from './layout/AppLayout';
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -10,11 +12,28 @@ import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import './App.css';
 
+/** Root gate: visitors see the public landing page, signed-in users the app. */
+function HomeGate() {
+  const auth = useAuth();
+
+  if (auth.status === 'loading') {
+    return <div className="app-boot" aria-hidden="true" />;
+  }
+  if (auth.status === 'anonymous') {
+    return <LandingPage />;
+  }
+  return <AppLayout />;
+}
+
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+
+      <Route element={<HomeGate />}>
+        <Route path="/" element={<DashboardPage />} />
+      </Route>
 
       <Route
         element={
@@ -23,7 +42,6 @@ function App() {
           </RequireAuth>
         }
       >
-        <Route path="/" element={<DashboardPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/new" element={<ProjectFormPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />

@@ -1,0 +1,564 @@
+/* ═══════════════ landing (public) ═══════════════
+   Mobile composition follows design screen 02 — Landing; desktop extends it. */
+
+.ld {
+  min-height: 100vh;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+.ld main {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 28px;
+  flex: 1;
+}
+.ld h2 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 12px 0 0;
+  text-wrap: balance;
+}
+.ld-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ld-lbl {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* ————— top bar ————— */
+.ld-top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  height: 56px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--hairline);
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+}
+.ld-nav {
+  display: flex;
+  gap: 26px;
+  font-size: 13.5px;
+}
+.ld-nav a {
+  text-decoration: none;
+  color: var(--ink-3);
+  padding: 19px 0 17px;
+}
+.ld-nav a:hover {
+  color: var(--ink);
+}
+.ld-top-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.ld-signin {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.ld-signin:hover {
+  color: var(--ink);
+}
+.ld-top-cta {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: var(--red);
+  color: #fff;
+  text-decoration: none;
+  padding: 9px 18px;
+}
+.ld-top-cta:hover {
+  background: var(--red-dark);
+}
+/* burger + dropdown are mobile-only; desktop shows the buttons above */
+.ld-burger {
+  margin-left: auto;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.ld-burger i {
+  width: 18px;
+  height: 2px;
+  background: var(--ink);
+}
+.ld-menu {
+  position: absolute;
+  top: 100%;
+  right: 28px;
+  z-index: 10;
+  min-width: 200px;
+  display: none;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+.ld-menu a {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  text-decoration: none;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--grid);
+}
+.ld-menu a:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+.ld-menu a:last-child {
+  border-bottom: 0;
+}
+.ld-menu a.ld-menu-cta {
+  background: var(--red);
+  color: #fff;
+  font-weight: 600;
+}
+.ld-menu a.ld-menu-cta:hover {
+  background: var(--red-dark);
+}
+
+/* ————— hero ————— */
+.ld-hero {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 64px;
+  align-items: center;
+  padding: 72px 0 64px;
+}
+.ld-hero .ld-eyebrow {
+  color: var(--red);
+}
+.ld-hero-copy h1 {
+  font-size: 58px;
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 14px 0 0;
+  text-wrap: balance;
+}
+.ld h1 em,
+.ld h2 em {
+  font-style: normal;
+  color: var(--red);
+}
+.ld-hero-copy > p {
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 18px 0 0;
+  max-width: 46ch;
+}
+.ld-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+.ld .cta.ld-cta {
+  display: inline-block;
+  width: auto;
+  margin-top: 0;
+  padding: 15px 30px;
+  text-decoration: none;
+}
+.ld-cta-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.ld-cta-sub u {
+  text-underline-offset: 3px;
+}
+
+/* proof panel (shared by hero) */
+.ld-proof {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+.ld-proof-row1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 14px 16px 0;
+}
+.ld-proof-amt {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 4px 16px 2px;
+}
+.ld-proof-cmp {
+  font-size: 12px;
+  color: var(--ink-2);
+  padding: 0 16px 12px;
+}
+.ld-proof-cmp b {
+  color: var(--good);
+  font-weight: 600;
+}
+.ld-proof-chart {
+  margin: 0;
+  padding: 0 16px 14px;
+}
+
+/* ————— three pillars ————— */
+.ld-feats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+.ld-feat {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 8px;
+  padding: 24px 22px;
+}
+.ld-feat + .ld-feat {
+  border-left: 1px solid var(--hairline);
+}
+.ld-no {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red);
+  padding-top: 2px;
+}
+.ld-feat h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+.ld-feat p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 5px 0 0;
+}
+
+/* ————— voice capture ————— */
+.ld-voice {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 64px;
+  align-items: start;
+  padding: 72px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.ld-voice-copy > p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 16px 0 0;
+  max-width: 52ch;
+}
+.ld-voice-points {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+.ld-voice-points li {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  padding: 13px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.ld-voice-points b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.ld-voice-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ld-transcript {
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  padding: 14px 16px 16px;
+}
+.ld-transcript p {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 8px 0 0;
+}
+.ld-parsed {
+  border: 1px solid var(--hairline);
+  border-top: 0;
+  padding: 14px 16px 16px;
+}
+.ld-parsed-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.ld-kind {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  color: var(--ink-2);
+}
+.ld-checklist {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.ld-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--grid);
+}
+.ld-checklist li.done {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+.ld-check {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ink-3);
+  background: var(--surface);
+  flex: none;
+  position: relative;
+}
+.ld-check.checked {
+  background: var(--red);
+  border-color: var(--red);
+}
+.ld-check.checked::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 3px;
+  height: 7px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.ld-reminder {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+  padding: 12px 0 0;
+}
+.ld-reminder b {
+  font-weight: 600;
+}
+
+/* ————— how it works ————— */
+.ld-guide {
+  padding: 72px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.ld-guide-head {
+  max-width: 620px;
+}
+.ld-guide-head > p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 16px 0 0;
+}
+.ld-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  margin-top: 44px;
+}
+.ld-step {
+  border-top: 1px solid var(--hairline);
+  padding-top: 18px;
+}
+.ld-step-no {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--red);
+}
+.ld-step h4 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  margin: 10px 0 0;
+}
+.ld-step p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 8px 0 0;
+}
+
+/* ————— open source ————— */
+.ld-oss {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 64px;
+  padding: 72px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.ld-oss-body p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0 0 16px;
+}
+.ld-oss-body b {
+  color: var(--ink);
+}
+.ld-disc {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* ————— closing ————— */
+.ld-close {
+  padding: 88px 0 96px;
+  text-align: center;
+}
+.ld-close h2 {
+  font-size: 40px;
+  margin: 0;
+}
+.ld-close .ld-cta-row {
+  justify-content: center;
+  margin-top: 32px;
+}
+
+/* ————— footer ————— */
+.ld-foot {
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 22px 28px 28px;
+}
+.ld-foot-note {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* ————— mobile — matches the 02 — Landing phone composition ————— */
+@media (max-width: 960px) {
+  .ld main {
+    padding: 0 22px;
+  }
+  .ld-top {
+    padding: 0 22px;
+    gap: 20px;
+  }
+  .ld-nav,
+  .ld-top-actions {
+    display: none;
+  }
+  .ld-burger {
+    display: flex;
+  }
+  .ld-menu {
+    display: flex;
+    right: 22px;
+  }
+  .ld-hero {
+    grid-template-columns: 1fr;
+    gap: 26px;
+    padding: 26px 0 30px;
+  }
+  .ld-hero-copy h1 {
+    font-size: 40px;
+  }
+  .ld-hero-copy > p {
+    font-size: 15px;
+    margin-top: 16px;
+  }
+  .ld-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-top: 26px;
+  }
+  .ld .cta.ld-cta {
+    display: block;
+    width: 100%;
+  }
+  .ld-cta-sub {
+    text-align: center;
+  }
+  .ld h2 {
+    font-size: 26px;
+  }
+  .ld-feats {
+    grid-template-columns: 1fr;
+  }
+  .ld-feat {
+    padding: 16px 0;
+  }
+  .ld-feat + .ld-feat {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .ld-voice,
+  .ld-oss {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 44px 0;
+  }
+  .ld-guide {
+    padding: 44px 0;
+  }
+  .ld-steps {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-top: 28px;
+  }
+  .ld-close {
+    padding: 52px 0 56px;
+  }
+  .ld-close h2 {
+    font-size: 32px;
+  }
+  .ld-foot {
+    padding: 20px 22px 26px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}

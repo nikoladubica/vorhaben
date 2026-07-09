@@ -34,6 +34,7 @@ import { EntriesSection } from '../components/entries/EntriesSection';
 import { ExpensesSection } from '../components/entries/ExpensesSection';
 import { TimeLogsSection } from '../components/entries/TimeLogsSection';
 import { NotesSection } from '../components/notes/NotesSection';
+import { ProjectDataSection } from '../components/projects/ProjectDataSection';
 
 // today minus 3 months, YYYY-MM-DD — the default range lower bound (normalization window §2.2).
 function threeMonthsAgo(): string {
@@ -418,6 +419,7 @@ export function ProjectDetailPage() {
               </div>
             </div>
           </div>
+          <ProjectDataSection projectId={project.id} />
           {/* The normalized revenue / expenses / net figures now surface in the header summary
               via GET /api/projects/:id/metrics (ticket 18). A fuller per-project trend chart in
               this column is still open future work. */}
