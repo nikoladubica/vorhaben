@@ -7,10 +7,16 @@
 // directions — the server never touches it, so safe rendering is the client's job.
 
 import { api } from '../api';
-import type { Note, NoteInput } from '../types';
+import type { Note, NoteInput, NoteListItem } from '../types';
 
 export function listNotes(projectId: number): Promise<Note[]> {
   return api.get<Note[]>(`/projects/${projectId}/notes`);
+}
+
+// Cross-project journal feed for the standalone notes screen (screen 10). Rows arrive grouped by
+// project name, newest-touched first within each group — carrying `project_name` for the rail.
+export function listAllNotes(): Promise<NoteListItem[]> {
+  return api.get<NoteListItem[]>('/notes');
 }
 
 export function createNote(projectId: number, input: NoteInput): Promise<Note> {

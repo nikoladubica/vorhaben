@@ -213,6 +213,36 @@ async function findOwnedNoteId(
   return row ? Number((row as { id: number }).id) : undefined;
 }
 
+// GET /api/notes — the whole journal across every one of the user's non-soft-deleted projects,
+// each row carrying its project's name for client-side grouping (the standalone Notes screen,
+// §22). Ownership and the deleted_at filter ride the same `notes as n` → `projects as p` join as
+// findOwnedNoteId. `noteSelect` can't be reused here: its column list is unqualified and would be
+// ambiguous across the join, so the select is written inline with `n.`-qualified columns plus
+// `p.name`. Timestamps are returned raw (ISO), exactly like GET /:id/notes — no DATE_FORMAT.
+// Deliberately unpaginated: v1 returns the full journal in one shot.
+notesRouter.get('/', async (req, res) => {
+  const userId = req.userId as number;
+
+  const rows = await db('notes as n')
+    .join('projects as p', 'p.id', 'n.project_id')
+    .where('p.user_id', userId)
+    .whereNull('p.deleted_at')
+    .select<(NoteRow & { project_name: string })[]>(
+      'n.id',
+      'n.project_id',
+      'n.title',
+      'n.body_md',
+      'n.created_at',
+      'n.updated_at',
+      'p.name as project_name',
+    )
+    // Grouped by project name, then most-recently-updated first, id as a stable tiebreak.
+    .orderBy('p.name', 'asc')
+    .orderBy('n.updated_at', 'desc')
+    .orderBy('n.id', 'desc');
+  res.json(rows);
+});
+
 // PATCH /api/notes/:id — partial update of title and/or body_md; ownership flows through the
 // project. `updated_at` is bumped whenever a field actually changes; an empty patch touches
 // nothing (created_at and updated_at both stay put).

@@ -10,6 +10,7 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectFormPage } from './pages/ProjectFormPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { NotesPage } from './pages/NotesPage';
 import './App.css';
 
 /** Root gate: visitors see the public landing page, signed-in users the app. */
@@ -46,6 +47,7 @@ function App() {
         <Route path="/projects/new" element={<ProjectFormPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/edit" element={<ProjectFormPage />} />
+        <Route path="/notes" element={<NotesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

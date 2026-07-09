@@ -31,13 +31,13 @@ export function AppLayout() {
           <NavLink to="/projects" className={({ isActive }) => (isActive ? 'on' : undefined)}>
             Projects
           </NavLink>
-          {/* Income and Notes are owned by later tickets; shown muted until routed. */}
+          {/* Income is owned by a later ticket; shown muted until routed. */}
           <span className="soon" aria-disabled="true">
             Income
           </span>
-          <span className="soon" aria-disabled="true">
+          <NavLink to="/notes" className={({ isActive }) => (isActive ? 'on' : undefined)}>
             Notes
-          </span>
+          </NavLink>
         </nav>
 
         <div className="account">

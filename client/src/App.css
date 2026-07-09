@@ -1218,6 +1218,186 @@ tr.expected td.r {
   gap: 10px;
 }
 
+/* ————— standalone notes screen (ticket 22) ————— */
+/* Cross-project journal, screen 10 — ported from the design file (lines 484–508). Reuses ticket
+   14's `.md` (headings h1–h4, tables, code, blockquote, pre); only `.md h5` is new here. */
+.notes-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 540px;
+}
+.nlist {
+  border-right: 1px solid var(--hairline);
+}
+.nlist .nl-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px 12px;
+}
+.nlist .nl-h .t {
+  font-size: 13px;
+  font-weight: 700;
+}
+.nlist .nl-empty {
+  padding: 14px 18px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.nl-group {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 14px 18px 6px;
+}
+/* button-as-row: reset the native control back to the design's block link look */
+.nl-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 10px 18px 11px;
+  border: 0;
+  border-top: 1px solid var(--grid);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+}
+.nl-item:hover {
+  background: var(--paper);
+}
+.nl-item.on {
+  background: var(--paper);
+  box-shadow: inset 2px 0 0 var(--red);
+}
+.nl-item:focus-visible {
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--ink);
+}
+.nl-item .t {
+  font-size: 13px;
+  font-weight: 600;
+}
+.nl-item .s {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.ed {
+  display: flex;
+  flex-direction: column;
+}
+.ed-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.ed-bar .t {
+  font-size: 14px;
+  font-weight: 700;
+  margin-right: auto;
+}
+/* editable title styled to read like the design's static `.ed-bar .t` */
+.ed-bar .ed-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: auto;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  padding: 2px 0;
+}
+.ed-bar .ed-title:focus {
+  outline: none;
+  border-bottom-color: var(--ink);
+}
+.ed-bar .ed-title::placeholder {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+/* required project picker for a new standalone note */
+.ed-bar .ed-project {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: 6px 10px;
+}
+.ed-bar .ed-project:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.ed-bar .saved {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ed-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+}
+.ed-src {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  padding: 20px;
+  border: 0;
+  border-right: 1px solid var(--hairline);
+  border-radius: 0;
+  resize: none;
+  background: var(--surface);
+  min-height: 380px;
+  width: 100%;
+}
+.ed-src:focus {
+  outline: none;
+  background: var(--paper);
+}
+.ed-prev {
+  padding: 20px 24px;
+}
+.ed-prev .plabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 12px;
+}
+.ed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 28px 24px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+/* h5 completes the rendered-Markdown heading scale (design line 508) */
+.md h5 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
 /* ═══════════════ dashboard (ticket 15) ═══════════════ */
 /* Ported from the design file (screens 01 Dashboard, 05 Projects & Timeline, 11 Income). */
 
@@ -1782,5 +1962,22 @@ a.tl-row:hover .tl-n {
   .set-nav button.on {
     border-right: 0;
     border-bottom: 2px solid var(--red);
+  }
+  /* standalone notes screen collapses to a single column (design line 665) */
+  .notes-grid {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .nlist {
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .ed-panes {
+    grid-template-columns: 1fr;
+  }
+  .ed-src {
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+    min-height: 220px;
   }
 }

@@ -161,3 +161,10 @@ export interface NoteInput {
   title: string;
   body_md: string;
 }
+
+// A note as returned by GET /api/notes — the cross-project journal feed (screen 10). Same shape
+// as Note plus the owning project's name, so the standalone browser can group rows by project
+// without a second lookup. Server orders by project name, then newest-touched first.
+export interface NoteListItem extends Note {
+  project_name: string;
+}
