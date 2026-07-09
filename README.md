@@ -20,7 +20,43 @@ vorhaben/
 └── docker-compose.yml   Local MariaDB for development
 ```
 
-## Getting started
+## Self-hosting (one command)
+
+Run the whole app — server, built client, and database — with Docker. The only
+prerequisite is **Docker** (with Compose). No Node install required.
+
+```bash
+git clone https://github.com/nikoladubica/vorhaben.git
+cd vorhaben
+cp .env.example .env
+
+# set a signing secret (required) — any long random string
+sed -i '' "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env   # macOS
+# Linux: sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
+
+docker compose up -d
+```
+
+That's it. Open **http://localhost:8080** and create your account.
+
+Compose builds the app image, waits for MariaDB to be healthy, runs database
+migrations on boot, and serves everything on one port. Your data lives in
+`./.docker/mariadb-data`.
+
+| Task | Command |
+| --- | --- |
+| Start / update | `docker compose up -d --build` |
+| Stop | `docker compose down` |
+| View logs | `docker compose logs -f app` |
+| Change the port | set `APP_PORT` in `.env` (default `8080`) |
+
+**Serving over HTTPS?** Put it behind a reverse proxy (Caddy, nginx, Traefik) and
+set `COOKIE_SECURE=true` in `.env` so the login cookie is marked `Secure`. Leave it
+`false` for plain-HTTP access, or the browser will drop the session cookie.
+
+> Keep `JWT_SECRET` stable — changing it invalidates everyone's login sessions.
+
+## Development
 
 ### Prerequisites
 
@@ -34,7 +70,7 @@ cp .env.example .env
 npm install
 
 # start a local MariaDB
-docker compose up -d
+docker compose up -d mariadb
 
 # run migrations
 npm run migrate

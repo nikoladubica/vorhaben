@@ -20,3 +20,25 @@ export type CompensationModel = (typeof COMPENSATION_MODELS)[number];
 export const PROJECT_STATUSES = ['idea', 'active', 'paused', 'ended'] as const;
 
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+
+// Canvas-board annotations. These are self-reported labels a user attaches to a card on the
+// canvas board — validated in the app layer against these lists (plain string columns, no DB
+// enum, mirroring compensation_model). CLOSED lists: do not add, rename, or reorder.
+// NOTE: `trend` here is the user's own gut feel, NOT the computed 3-month revenue trend from the
+// normalization layer — the two are deliberately separate and must never be conflated.
+export const FEELINGS = [
+  'happy',
+  'sad',
+  'miserable',
+  'excited',
+  'opportunistic',
+  'pessimistic',
+  'stressed',
+  'grateful',
+] as const;
+
+export type Feeling = (typeof FEELINGS)[number];
+
+export const TRENDS = ['good', 'stable', 'bad'] as const;
+
+export type Trend = (typeof TRENDS)[number];

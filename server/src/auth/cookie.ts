@@ -8,13 +8,14 @@ export const AUTH_COOKIE = 'token';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
- * Options for setting the auth cookie. `secure` is only enabled in production
- * so the cookie still works over plain HTTP in local dev / self-host.
+ * Options for setting the auth cookie. `secure` follows env.cookieSecure so the
+ * cookie still works over plain HTTP in local dev / HTTP self-host, while HTTPS
+ * deployments (hosted, or self-host behind a TLS proxy) keep it on.
  */
 export const authCookieOptions: CookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: env.nodeEnv === 'production',
+  secure: env.cookieSecure,
   maxAge: THIRTY_DAYS_MS,
 };
 
@@ -25,5 +26,5 @@ export const authCookieOptions: CookieOptions = {
 export const clearAuthCookieOptions: CookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: env.nodeEnv === 'production',
+  secure: env.cookieSecure,
 };

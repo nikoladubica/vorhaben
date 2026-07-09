@@ -183,6 +183,22 @@
   padding: 15px 30px;
   text-decoration: none;
 }
+/* secondary hero action — outlined, square; confident but not the red primary */
+.ld-cta-2 {
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 14px 24px;
+  border: 1px solid var(--ink);
+  background: var(--surface);
+}
+.ld-cta-2:hover {
+  background: var(--ink);
+  color: var(--surface);
+}
 .ld-cta-sub {
   font-size: 13px;
   color: var(--ink-2);
@@ -518,6 +534,11 @@
   .ld .cta.ld-cta {
     display: block;
     width: 100%;
+  }
+  .ld-cta-2 {
+    display: block;
+    width: 100%;
+    text-align: center;
   }
   .ld-cta-sub {
     text-align: center;

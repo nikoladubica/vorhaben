@@ -16,3 +16,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Full app (server + built client), served on one port. Runs migrations on boot.
+  # Only starts once MariaDB reports healthy. Comment this service out if you'd
+  # rather run the app from source (npm run dev) against just the mariadb service.
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4001
+      CORS_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Connect to the mariadb service over the compose network (internal port 3306).
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-vorhaben}
+      DB_USER: ${DB_USER:-vorhaben}
+      DB_PASSWORD: ${DB_PASSWORD:-vorhaben}
+      # No fallback on purpose: compose fails fast if JWT_SECRET is unset.
+      JWT_SECRET: '${JWT_SECRET:?Set JWT_SECRET in .env — generate one with openssl rand -hex 32}'
+    ports:
+      - '${APP_PORT:-8080}:4001'

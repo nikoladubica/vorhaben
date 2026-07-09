@@ -31,6 +31,9 @@ export function AppLayout() {
           <NavLink to="/projects" className={({ isActive }) => (isActive ? 'on' : undefined)}>
             Projects
           </NavLink>
+          <NavLink to="/canvas" className={({ isActive }) => (isActive ? 'on' : undefined)}>
+            Canvas
+          </NavLink>
           {/* Income is owned by a later ticket; shown muted until routed. */}
           <span className="soon" aria-disabled="true">
             Income

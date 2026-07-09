@@ -3,8 +3,12 @@ import type { Knex } from 'knex';
 import { db } from '../db/index.js';
 import {
   COMPENSATION_MODELS,
+  FEELINGS,
+  TRENDS,
   type CompensationModel,
+  type Feeling,
   type ProjectStatus,
+  type Trend,
 } from '../domain/constants.js';
 import {
   deriveStatus,
@@ -34,6 +38,8 @@ interface ProjectRow {
   compensation_model: string;
   rate_amount: string | null;
   rate_currency: string | null;
+  feeling: string | null;
+  trend: string | null;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -73,6 +79,8 @@ function projectQuery(executor: Knex | Knex.Transaction) {
       'p.compensation_model',
       'p.rate_amount',
       'p.rate_currency',
+      'p.feeling',
+      'p.trend',
       'p.created_at',
       'p.updated_at',
       'p.deleted_at',
@@ -124,6 +132,8 @@ interface ValidatedColumns {
   end_date?: string | null;
   rate_amount?: number | null;
   rate_currency?: string | null;
+  feeling?: Feeling | null;
+  trend?: Trend | null;
 }
 
 interface ValidatedInput {
@@ -266,6 +276,30 @@ async function validateProjectInput(
       fields.rate_currency = 'invalid';
     } else {
       columns.rate_currency = raw;
+    }
+  }
+
+  // feeling (self-reported canvas annotation; null/undefined clears it) ---
+  if (provided('feeling')) {
+    const raw = body.feeling;
+    if (raw === null || raw === undefined) {
+      columns.feeling = null;
+    } else if (typeof raw !== 'string' || !FEELINGS.includes(raw as Feeling)) {
+      fields.feeling = 'invalid';
+    } else {
+      columns.feeling = raw as Feeling;
+    }
+  }
+
+  // trend (self-reported canvas annotation; NOT the computed revenue trend) --
+  if (provided('trend')) {
+    const raw = body.trend;
+    if (raw === null || raw === undefined) {
+      columns.trend = null;
+    } else if (typeof raw !== 'string' || !TRENDS.includes(raw as Trend)) {
+      fields.trend = 'invalid';
+    } else {
+      columns.trend = raw as Trend;
     }
   }
 

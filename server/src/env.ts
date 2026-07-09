@@ -19,6 +19,15 @@ export const env = {
   nodeEnv,
   port: Number(process.env.PORT ?? 4001),
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  // In production the server also serves the built client (single-origin self-host).
+  // Points at the Vite build output; override with CLIENT_DIST_PATH if relocated.
+  clientDistPath: process.env.CLIENT_DIST_PATH ?? path.join(rootDir, 'client', 'dist'),
+  // Auth-cookie `secure` flag. Defaults to on in production, but self-hosters serving
+  // over plain HTTP (no TLS/reverse proxy) must set COOKIE_SECURE=false so login works.
+  cookieSecure:
+    process.env.COOKIE_SECURE !== undefined
+      ? process.env.COOKIE_SECURE === 'true'
+      : nodeEnv === 'production',
   // Required secret for signing JWTs. In production there is NO fallback — the
   // process must fail fast if it is missing. In dev/self-host a stable fallback
   // keeps local setup frictionless.

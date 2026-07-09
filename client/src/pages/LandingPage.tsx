@@ -83,6 +83,9 @@ export function LandingPage() {
               <Link className="cta ld-cta" to="/register">
                 Start tracking — free
               </Link>
+              <Link className="ld-cta-2" to="/try-canvas">
+                Play around with our canvas tool →
+              </Link>
               <a className="ld-cta-sub" href="#open-source">
                 Open source — <u>or self-host it</u>
               </a>

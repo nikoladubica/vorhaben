@@ -2,7 +2,14 @@
 // credentials, JSON, and ApiError (with the 422 `fields` map) — see client/src/api.ts.
 
 import { api } from '../api';
-import type { Project, ProjectMetrics, ProjectPayload, ProjectType } from '../types';
+import type {
+  Feeling,
+  Project,
+  ProjectMetrics,
+  ProjectPayload,
+  ProjectType,
+  Trend,
+} from '../types';
 
 export interface ProjectFilters {
   status?: string;
@@ -32,10 +39,7 @@ export function createProject(payload: ProjectPayload): Promise<Project> {
   return api.post<Project>('/projects', payload);
 }
 
-export function updateProject(
-  id: number,
-  payload: ProjectPayload,
-): Promise<Project> {
+export function updateProject(id: number, payload: ProjectPayload): Promise<Project> {
   return api.patch<Project>(`/projects/${id}`, payload);
 }
 
@@ -49,6 +53,17 @@ export function restoreProject(id: number): Promise<Project> {
 
 export function listProjectTypes(): Promise<ProjectType[]> {
   return api.get<ProjectType[]>('/project-types');
+}
+
+// Canvas annotations (screen 14). Each is a thin PATCH that sets — or clears, with null — one of the
+// two feeling/trend fields; the server validates the closed lists (invalid → 422 fields.feeling /
+// fields.trend). Neither touches the project's numbers. Returns the updated project.
+export function setProjectFeeling(id: number, feeling: Feeling | null): Promise<Project> {
+  return api.patch<Project>(`/projects/${id}`, { feeling });
+}
+
+export function setProjectTrend(id: number, trend: Trend | null): Promise<Project> {
+  return api.patch<Project>(`/projects/${id}`, { trend });
 }
 
 // The project's normalized headline figures (§2.2 / §8) for the detail-screen summary — same

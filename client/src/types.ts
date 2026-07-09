@@ -14,6 +14,21 @@ export type CompensationModel =
 // Project lifecycle statuses (§1.2). Mirrors the DB enum on projects.status.
 export type ProjectStatus = 'idea' | 'active' | 'paused' | 'ended';
 
+// The 8 canvas feelings — a closed list; keep in sync with the server enum. How the work FEELS,
+// independent of the numbers (screen 14).
+export type Feeling =
+  | 'happy'
+  | 'sad'
+  | 'miserable'
+  | 'excited'
+  | 'opportunistic'
+  | 'pessimistic'
+  | 'stressed'
+  | 'grateful';
+
+// The 3 canvas trends — how the work is GOING. Semantic (good/stable/bad), never the red accent.
+export type Trend = 'good' | 'stable' | 'bad';
+
 // A project as returned by GET /api/projects and /api/projects/:id. Dates arrive as
 // YYYY-MM-DD strings; rate_amount is a decimal string (or null) — amounts stay strings
 // end to end (ticket 04 convention).
@@ -33,6 +48,10 @@ export interface Project {
   updated_at: string;
   deleted_at: string | null;
   tags: string[];
+  // Canvas annotations (screen 14) — both null until the user sets them; they never touch the
+  // project's numbers.
+  feeling: Feeling | null;
+  trend: Trend | null;
 }
 
 // A project type from GET /api/project-types (reference lookup for the type select).
@@ -167,4 +186,31 @@ export interface NoteInput {
 // without a second lookup. Server orders by project name, then newest-touched first.
 export interface NoteListItem extends Note {
   project_name: string;
+}
+
+// A card on the canvas board (screen 14), from GET /api/canvas. `x`/`y` are present only on
+// `placed` items (board coordinates in px, snapped to a 24px grid); tray items omit them. The
+// money figures mirror the project-metrics headline (§2.2) and are null when uncomputable —
+// render as an em dash. `note_count` drives the file-chip count; `feeling`/`trend` are the same
+// closed lists as the project annotations.
+export interface CanvasItem {
+  project_id: number;
+  name: string;
+  type: string;
+  type_label: string;
+  status: ProjectStatus;
+  feeling: Feeling | null;
+  trend: Trend | null;
+  note_count: number;
+  monthly_revenue: number | null;
+  effective_hourly_rate: number | null;
+  base_currency: string;
+  x?: number;
+  y?: number;
+}
+
+// The full canvas payload from GET /api/canvas — cards already on the board vs. still in the tray.
+export interface CanvasBoard {
+  placed: CanvasItem[];
+  tray: CanvasItem[];
 }

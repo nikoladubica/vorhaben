@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "migrate": "NODE_OPTIONS=--import=tsx knex migrate:latest --knexfile src/db/knexfile.ts",
+    "migrate:prod": "knex migrate:latest --knexfile dist/db/knexfile.js",
     "migrate:rollback": "NODE_OPTIONS=--import=tsx knex migrate:rollback --knexfile src/db/knexfile.ts",
     "migrate:make": "NODE_OPTIONS=--import=tsx knex migrate:make --knexfile src/db/knexfile.ts -x ts",
     "seed": "NODE_OPTIONS=--import=tsx knex seed:run --knexfile src/db/knexfile.ts"

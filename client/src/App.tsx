@@ -11,6 +11,8 @@ import { ProjectFormPage } from './pages/ProjectFormPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotesPage } from './pages/NotesPage';
+import { Canvas } from './pages/Canvas';
+import { TryCanvasPage } from './pages/TryCanvasPage';
 import './App.css';
 
 /** Root gate: visitors see the public landing page, signed-in users the app. */
@@ -31,6 +33,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/try-canvas" element={<TryCanvasPage />} />
 
       <Route element={<HomeGate />}>
         <Route path="/" element={<DashboardPage />} />
@@ -48,6 +51,7 @@ function App() {
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/edit" element={<ProjectFormPage />} />
         <Route path="/notes" element={<NotesPage />} />
+        <Route path="/canvas" element={<Canvas />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

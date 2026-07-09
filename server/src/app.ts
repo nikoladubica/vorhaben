@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'node:path';
 import { env } from './env.js';
 import { requireAuth } from './auth/middleware.js';
 import { healthRouter } from './routes/health.js';
@@ -11,6 +12,7 @@ import { projectEntriesRouter, entriesRouter } from './routes/incomeEntries.js';
 import { projectExpensesRouter, expensesRouter } from './routes/expenseEntries.js';
 import { projectTimeLogsRouter, timeLogsRouter } from './routes/timeLogs.js';
 import { projectNotesRouter, notesRouter } from './routes/notes.js';
+import { canvasRouter } from './routes/canvas.js';
 import { fxRatesRouter } from './routes/fxRates.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { accountRouter } from './routes/account.js';
@@ -43,6 +45,9 @@ app.use('/api/projects', requireAuth, projectTimeLogsRouter);
 // Nested note routes (/:id/notes) share the /api/projects mount, same pattern again: /:id is a
 // single segment so it never captures /:id/notes.
 app.use('/api/projects', requireAuth, projectNotesRouter);
+// Canvas board: card placement + tray. Placed/tray cards reuse the projects/notes/metrics data,
+// so this mounts alongside the other project-related routers.
+app.use('/api/canvas', requireAuth, canvasRouter);
 app.use('/api/project-types', requireAuth, projectTypesRouter);
 app.use('/api/entries', requireAuth, entriesRouter);
 app.use('/api/expenses', requireAuth, expensesRouter);
@@ -57,6 +62,21 @@ app.use('/api/tags', requireAuth, tagsRouter);
 // as the shared 413 below).
 app.use('/api/export', requireAuth, exportRouter);
 app.use('/api/import', requireAuth, importRouter);
+
+// In production the built client is served from the same origin as the API, so a
+// self-host runs as a single container on one port (no CORS, no separate web server).
+// Static assets first, then an SPA fallback that returns index.html for any non-API,
+// non-file route so client-side routing works on refresh/deep-link.
+if (env.nodeEnv === 'production') {
+  app.use(express.static(env.clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      next();
+      return;
+    }
+    res.sendFile(path.join(env.clientDistPath, 'index.html'));
+  });
+}
 
 // Body-parser overflow handler. A payload above the 2mb parser ceiling throws before any route
 // runs; catch just that case and answer with a consistent JSON 413 (instead of Express's default

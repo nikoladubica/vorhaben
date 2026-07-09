@@ -1,0 +1,470 @@
+/* Canvas board — design screen 14. Ported verbatim from .claude/design/vorhaben-design.html
+   (lines 560–632 + responsive 671–674). Tokens only, square corners, hairline borders, no shadows.
+   The handful of classes below the "component additions" divider back the React pieces (pickers,
+   remove control, file-drop state, chip links) and stay within the same token system. */
+
+/* ————— promo strip ————— */
+.cv-promo {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding: 13px 24px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper);
+}
+.cv-promo .k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  white-space: nowrap;
+}
+.cv-promo p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+/* ————— body: tray + board ————— */
+.cv-body {
+  display: grid;
+  grid-template-columns: 216px 1fr;
+}
+.cv-tray {
+  border-right: 1px solid var(--hairline);
+  background: var(--paper);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cv-tray .t {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.cv-tray .hint {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin: 0 0 6px;
+}
+.tray-item {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  padding: 10px 12px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.tray-item.drag {
+  cursor: grabbing;
+}
+.tray-item b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tray-item small {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.cv-tray .empty {
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.cv-board {
+  position: relative;
+  height: 600px;
+  overflow: hidden;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--hairline) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.cv-board .board-empty {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 24px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+
+/* ————— card ————— */
+.cv-card {
+  position: absolute;
+  width: 216px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.cv-card.drag {
+  border-color: var(--ink);
+  cursor: grabbing;
+  z-index: 10;
+}
+/* File hovering over the card — same --ink border as .drag; never red. */
+.cv-card.over {
+  border-color: var(--ink);
+}
+.cv-card .hd {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--grid);
+}
+.cv-card .hd .typ {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.cv-card .hd h6 {
+  margin: 3px 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.cv-card .hd .val {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.cv-tags {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px 0;
+  flex-wrap: wrap;
+}
+.cv-tag {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.cv-tag .pre {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.cv-tag.t-good {
+  color: var(--good);
+}
+.cv-tag.t-stable {
+  color: var(--ink-3);
+}
+.cv-tag.t-bad {
+  color: var(--ink);
+}
+.cv-files {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px 12px;
+}
+.cv-file {
+  font-size: 11px;
+  color: var(--ink-3);
+  text-decoration: none;
+}
+.cv-file:hover {
+  color: var(--ink);
+}
+
+/* ————— feeling / trend popover ————— */
+.cv-menu {
+  position: absolute;
+  left: -1px;
+  top: calc(100% + 6px);
+  width: 216px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  z-index: 5;
+}
+.cv-menu .mh {
+  padding: 10px 12px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.cv-menu .mg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding-bottom: 6px;
+}
+.cv-menu button {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  text-align: left;
+  padding: 7px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink);
+}
+.cv-menu button:hover {
+  background: var(--paper);
+}
+.cv-menu button.on {
+  background: var(--paper);
+  font-weight: 600;
+}
+/* Clear row — full-width, separated by a sub-border. */
+.cv-menu .mclear {
+  display: block;
+  width: 100%;
+  border-top: 1px solid var(--grid);
+  color: var(--ink-2);
+}
+/* Semantic trend colour on the menu rows too (never red). */
+.cv-menu button.t-good {
+  color: var(--good);
+}
+.cv-menu button.t-stable {
+  color: var(--ink-3);
+}
+.cv-menu button.t-bad {
+  color: var(--ink);
+}
+
+/* ————— component additions (picker wrapper, remove, drop error) ————— */
+
+/* Static wrapper so the absolute .cv-menu anchors to the positioned .cv-card, matching the design's
+   drop-below-the-card placement while keeping each picker self-contained. */
+.cv-pick {
+  position: static;
+}
+.cv-remove {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: 0;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: var(--ink-3);
+}
+.cv-remove:hover {
+  color: var(--ink);
+}
+.cv-file-err {
+  padding: 0 14px 12px;
+  font-size: 11px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+/* Floating clone that follows the pointer while dragging a tray item onto the board. */
+.cv-tray-ghost {
+  position: fixed;
+  width: 176px;
+  pointer-events: none;
+  z-index: 50;
+  border-color: var(--ink);
+  opacity: 0.9;
+}
+
+/* Visible focus — ink ring (red stays reserved for the nav state and the promo key). */
+.cv-tag:focus-visible,
+.cv-remove:focus-visible,
+.tray-item:focus-visible,
+.cv-menu button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+/* ————— responsive (design lines 671–674) ————— */
+@media (max-width: 960px) {
+  .cv-body {
+    grid-template-columns: 1fr;
+  }
+  .cv-tray {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .cv-tray .hint {
+    flex-basis: 100%;
+  }
+  .cv-board {
+    height: 480px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEMO-ONLY — public /try-canvas page (localStorage, no auth). Tokens only,
+   square corners, hairline borders, no shadows. Reuses .cv-*, .panel, .wordmark.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.demo {
+  min-height: 100vh;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Minimal top bar — wordmark, back-home link, and a single red CTA on the right. */
+.demo-top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 56px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--hairline);
+  max-width: 1120px;
+  margin: 0 auto;
+  width: 100%;
+}
+.demo-home {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.demo-home:hover {
+  color: var(--ink);
+}
+.demo-start {
+  margin-left: auto;
+}
+
+.demo-main {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 28px 56px;
+  flex: 1;
+}
+
+/* Quick-add row — name input + type select + Add / Reset, on the panel above the board. */
+.demo-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--paper);
+}
+.demo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.demo-field:first-child {
+  flex: 1 1 220px;
+}
+.demo-field label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.demo-field input,
+.demo-field select {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+}
+.demo-field select {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2355534f' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  min-width: 170px;
+}
+.demo-field input:focus,
+.demo-field select:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.demo-btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 10px 20px;
+  cursor: pointer;
+  border: 1px solid var(--red);
+  background: var(--red);
+  color: #fff;
+}
+.demo-btn:hover {
+  background: var(--red-dark);
+  border-color: var(--red-dark);
+}
+.demo-btn.ghost {
+  background: transparent;
+  color: var(--ink-2);
+  border-color: var(--hairline);
+}
+.demo-btn.ghost:hover {
+  background: transparent;
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.demo-btn[disabled] {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+.demo-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.demo-foot {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 22px 0 0;
+}
+.demo-foot a {
+  color: var(--ink);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 960px) {
+  .demo-top {
+    padding: 0 22px;
+    gap: 16px;
+  }
+  .demo-main {
+    padding: 24px 22px 44px;
+  }
+  .demo-add {
+    padding: 16px;
+  }
+  .demo-btn {
+    flex: 1 1 auto;
+  }
+}
