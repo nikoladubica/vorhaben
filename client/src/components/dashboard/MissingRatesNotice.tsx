@@ -4,6 +4,7 @@
 // warning still applies, which is intentional: it is information, not an error to acknowledge away.
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface MissingRatesNoticeProps {
   currencies: string[];
@@ -18,8 +19,9 @@ export function MissingRatesNotice({ currencies }: MissingRatesNoticeProps) {
     <div className="rates-notice" role="status">
       <span className="warn-flag">Missing rates</span>
       <span className="rates-body">
-        No exchange rate for {list} — amounts in {currencies.length > 1 ? 'these currencies' : 'this currency'} may be
-        incomplete.
+        No exchange rate for {list} — amounts in{' '}
+        {currencies.length > 1 ? 'these currencies' : 'this currency'} may be incomplete.{' '}
+        <Link to="/settings">Add rates</Link>
       </span>
       <button
         type="button"

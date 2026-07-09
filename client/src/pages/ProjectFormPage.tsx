@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError } from '../api';
-import type {
-  CompensationModel,
-  ProjectPayload,
-  ProjectStatus,
-  ProjectType,
-} from '../types';
+import type { CompensationModel, ProjectPayload, ProjectStatus, ProjectType } from '../types';
 import {
   createProject,
   getProject,
@@ -14,12 +9,9 @@ import {
   softDeleteProject,
   updateProject,
 } from '../api/projects';
-import {
-  COMPENSATION_CONFIG,
-  COMPENSATION_MODELS,
-  modelHasAmount,
-} from '../domain/compensation';
+import { COMPENSATION_CONFIG, COMPENSATION_MODELS, modelHasAmount } from '../domain/compensation';
 import { TagInput } from '../components/projects/TagInput';
+import { CURRENCIES } from '../domain/currencies';
 
 // The status intent the user can set. `ended` is never offered — it is derived by the server
 // from a past end date (§1.3).
@@ -29,14 +21,6 @@ const STATUS_CHOICES: { value: StatusChoice; label: string }[] = [
   { value: 'active', label: 'Active' },
   { value: 'paused', label: 'Paused' },
   { value: 'idea', label: 'Idea' },
-];
-
-// Per-project currency options (matches the onboarding base-currency set in the design).
-const CURRENCIES: { value: string; label: string }[] = [
-  { value: 'CHF', label: 'CHF — Swiss franc' },
-  { value: 'EUR', label: 'EUR — Euro' },
-  { value: 'USD', label: 'USD — US dollar' },
-  { value: 'GBP', label: 'GBP — Pound sterling' },
 ];
 
 // Editable form state — every value is a string (or string[]), converted to the API shape
@@ -87,9 +71,7 @@ function fieldMessage(field: string, code: string): string {
       return 'End date must be on or after the start date.';
     case 'invalid':
     default:
-      return field === 'rate_amount'
-        ? 'Enter a valid amount.'
-        : 'This value is not valid.';
+      return field === 'rate_amount' ? 'Enter a valid amount.' : 'This value is not valid.';
   }
 }
 
@@ -160,20 +142,14 @@ export function ProjectFormPage() {
     if (form.name.trim().length < 1) errors.name = 'required';
     if (form.type.trim().length < 1) errors.type = 'required';
     if (form.start_date.trim().length < 1) errors.start_date = 'required';
-    if (
-      form.start_date &&
-      form.end_date &&
-      form.end_date < form.start_date
-    ) {
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
       errors.end_date = 'before_start';
     }
     return errors;
   }
 
   function buildPayload(): ProjectPayload {
-    const amount = showAmount && form.rate_amount.trim() !== ''
-      ? Number(form.rate_amount)
-      : null;
+    const amount = showAmount && form.rate_amount.trim() !== '' ? Number(form.rate_amount) : null;
     return {
       name: form.name.trim(),
       type: form.type,
@@ -232,10 +208,7 @@ export function ProjectFormPage() {
 
   const heading = isEdit ? 'Edit project' : 'New project';
 
-  const currencyPrefix = useMemo(
-    () => form.rate_currency || 'CHF',
-    [form.rate_currency],
-  );
+  const currencyPrefix = useMemo(() => form.rate_currency || 'CHF', [form.rate_currency]);
 
   if (loading) {
     return (
@@ -326,9 +299,7 @@ export function ProjectFormPage() {
                 </span>
               ))}
             </div>
-            <em className="field-hint">
-              Projects end automatically when their end date passes.
-            </em>
+            <em className="field-hint">Projects end automatically when their end date passes.</em>
           </div>
 
           <label className="field">
@@ -340,9 +311,7 @@ export function ProjectFormPage() {
               aria-invalid={fieldErrors.start_date ? true : undefined}
             />
             {fieldErrors.start_date && (
-              <em className="field-error">
-                {fieldMessage('start_date', fieldErrors.start_date)}
-              </em>
+              <em className="field-error">{fieldMessage('start_date', fieldErrors.start_date)}</em>
             )}
           </label>
 
@@ -355,9 +324,7 @@ export function ProjectFormPage() {
               aria-invalid={fieldErrors.end_date ? true : undefined}
             />
             {fieldErrors.end_date && (
-              <em className="field-error">
-                {fieldMessage('end_date', fieldErrors.end_date)}
-              </em>
+              <em className="field-error">{fieldMessage('end_date', fieldErrors.end_date)}</em>
             )}
           </label>
 
@@ -379,10 +346,7 @@ export function ProjectFormPage() {
             </div>
             {fieldErrors.compensation_model && (
               <em className="field-error">
-                {fieldMessage(
-                  'compensation_model',
-                  fieldErrors.compensation_model,
-                )}
+                {fieldMessage('compensation_model', fieldErrors.compensation_model)}
               </em>
             )}
           </div>
@@ -471,8 +435,8 @@ export function ProjectFormPage() {
           {confirmingDelete ? (
             <div className="delete-confirm">
               <p>
-                This moves <strong>{form.name || 'this project'}</strong> to trash. You
-                can restore it from the projects list.
+                This moves <strong>{form.name || 'this project'}</strong> to trash. You can restore
+                it from the projects list.
               </p>
               <div className="delete-confirm-actions">
                 <button

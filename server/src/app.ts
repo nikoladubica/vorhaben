@@ -12,6 +12,8 @@ import { projectTimeLogsRouter, timeLogsRouter } from './routes/timeLogs.js';
 import { projectNotesRouter, notesRouter } from './routes/notes.js';
 import { fxRatesRouter } from './routes/fxRates.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { accountRouter } from './routes/account.js';
+import { tagsRouter } from './routes/tags.js';
 
 export const app = express();
 
@@ -42,20 +44,24 @@ app.use('/api/time-logs', requireAuth, timeLogsRouter);
 app.use('/api/notes', requireAuth, notesRouter);
 app.use('/api/fx-rates', requireAuth, fxRatesRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
+app.use('/api/account', requireAuth, accountRouter);
+app.use('/api/tags', requireAuth, tagsRouter);
 
 // Body-parser overflow handler. A payload above the 2mb parser ceiling throws before any route
 // runs; catch just that case and answer with a consistent JSON 413 (instead of Express's default
 // HTML). Everything else passes through untouched, so existing routes' error behavior is
 // unchanged.
-app.use((
-  err: Error & { type?: string; status?: number },
-  _req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-) => {
-  if (err.type === 'entity.too.large' || err.status === 413) {
-    res.status(413).json({ error: 'payload_too_large' });
-    return;
-  }
-  next(err);
-});
+app.use(
+  (
+    err: Error & { type?: string; status?: number },
+    _req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    if (err.type === 'entity.too.large' || err.status === 413) {
+      res.status(413).json({ error: 'payload_too_large' });
+      return;
+    }
+    next(err);
+  },
+);

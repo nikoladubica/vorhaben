@@ -1370,6 +1370,16 @@ a.tl-row:hover .tl-n {
 .rates-notice .rates-body {
   flex: 1;
 }
+.rates-notice a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.rates-notice a:hover {
+  color: var(--red);
+  border-bottom-color: var(--red);
+}
 .warn-flag {
   display: inline-flex;
   align-items: center;
@@ -1393,6 +1403,122 @@ a.tl-row:hover .tl-n {
   font-size: 9px;
 }
 
+/* ————— settings (from the design file) ————— */
+.set-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  border: 1px solid var(--hairline);
+}
+.set-nav {
+  border-right: 1px solid var(--hairline);
+  padding: 20px 0;
+}
+.set-nav button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  border-right: 2px solid transparent;
+  padding: 10px 24px;
+  cursor: pointer;
+}
+.set-nav button:hover {
+  color: var(--ink);
+}
+.set-nav button.on {
+  color: var(--ink);
+  font-weight: 600;
+  border-right: 2px solid var(--red);
+  background: var(--paper);
+}
+.set-body {
+  padding: 28px 32px 32px;
+}
+.set-sec {
+  max-width: 620px;
+}
+.set-sec h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.set-sec .desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0 0 18px;
+  max-width: 56ch;
+}
+/* Neutral, non-urgent note (e.g. the base-currency heads-up). Deliberately not red — the red in
+   these sections is earned by the primary action, not by an informational aside. */
+.set-note {
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--ink-3);
+  background: var(--paper);
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* fx-rate table + inline add row (composed from tokens) */
+.fx-table {
+  margin-bottom: 16px;
+}
+.fx-caption {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.fx-empty {
+  color: var(--ink-2);
+}
+.fx-add {
+  grid-template-columns: 90px 1fr 150px auto;
+}
+
+/* tags list (composed from tokens) */
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+.tag-list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--grid);
+}
+.tag-name-btn {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.tag-name-btn:hover {
+  color: var(--red);
+}
+.tag-list-row .cell-input {
+  max-width: 220px;
+}
+.tag-count {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
 @media (max-width: 960px) {
   .cols {
     grid-template-columns: 1fr;
@@ -1401,11 +1527,34 @@ a.tl-row:hover .tl-n {
   .entry-add.income {
     grid-template-columns: 1fr 1fr;
   }
+  .fx-add {
+    grid-template-columns: 1fr 1fr;
+  }
   .rank-cols {
     grid-template-columns: 1fr;
   }
   .focus .panel-b {
     grid-template-columns: 1fr;
     gap: 20px;
+  }
+  .set-grid {
+    grid-template-columns: 1fr;
+  }
+  .set-nav {
+    display: flex;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+    padding: 8px;
+  }
+  .set-nav button {
+    width: auto;
+    border-right: 0;
+    border-bottom: 2px solid transparent;
+    padding: 8px 14px;
+  }
+  .set-nav button.on {
+    border-right: 0;
+    border-bottom: 2px solid var(--red);
   }
 }
