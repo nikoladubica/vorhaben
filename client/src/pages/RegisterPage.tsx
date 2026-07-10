@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { ApiError } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { authErrorMessage } from '../auth/authErrors';
+import { PasswordField } from '../components/PasswordField';
 
 const CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP'];
 
@@ -44,9 +45,9 @@ export function RegisterPage() {
   return (
     <div className="auth-stage">
       <form className="auth-card" onSubmit={onSubmit} noValidate>
-        <span className="wordmark">
+        <Link className="wordmark" to="/">
           <span className="sq" aria-hidden="true"></span>VORHABEN
-        </span>
+        </Link>
         <h4>Create your account</h4>
 
         {formError && (
@@ -68,18 +69,13 @@ export function RegisterPage() {
           {fieldErrors.email && <em className="field-error">{fieldErrors.email}</em>}
         </label>
 
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={fieldErrors.password ? true : undefined}
-          />
-          {fieldErrors.password && <em className="field-error">{fieldErrors.password}</em>}
-        </label>
+        <PasswordField
+          name="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+          error={fieldErrors.password}
+        />
 
         <label className="field">
           <span>Base currency</span>

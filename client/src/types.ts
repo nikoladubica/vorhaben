@@ -54,6 +54,18 @@ export interface Project {
   trend: Trend | null;
 }
 
+// A project row as returned by the LIST endpoint (GET /api/projects), enriched with the same
+// normalized figures the dashboard uses. `total_revenue` is all-time; `monthly_revenue`,
+// `monthly_net` and `effective_hourly_rate` are the trailing-3-month window. Each is null when
+// unavailable (no contributing entries, or no logged hours for the rate). The single-project GET
+// does NOT carry these — it's the plain `Project`.
+export interface ProjectWithMetrics extends Project {
+  total_revenue: number | null;
+  monthly_revenue: number | null;
+  monthly_net: number | null;
+  effective_hourly_rate: number | null;
+}
+
 // A project type from GET /api/project-types (reference lookup for the type select).
 export interface ProjectType {
   id: string;
@@ -130,11 +142,15 @@ export interface ProjectMetrics {
   project_id: number;
   base_currency: string;
   total_revenue: number | null;
+  total_expenses: number | null;
   monthly_revenue: number | null;
   monthly_expenses: number | null;
   monthly_net: number | null;
   effective_hourly_rate: number | null;
   hours_in_window: number;
+  // Actual months spanned by the trailing window (≤ 3, shorter for young projects) — lets the UI
+  // express windowed hours as a per-month figure.
+  window_months: number;
 }
 
 // A time log from GET /api/projects/:id/time-logs (newest first). `date` is YYYY-MM-DD;

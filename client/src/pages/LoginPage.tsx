@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { ApiError } from '../api';
 import { useAuth } from '../auth/useAuth';
 import { authErrorMessage } from '../auth/authErrors';
+import { PasswordField } from '../components/PasswordField';
 
 export function LoginPage() {
   const auth = useAuth();
@@ -41,9 +42,9 @@ export function LoginPage() {
   return (
     <div className="auth-stage">
       <form className="auth-card" onSubmit={onSubmit} noValidate>
-        <span className="wordmark">
+        <Link className="wordmark" to="/">
           <span className="sq" aria-hidden="true"></span>VORHABEN
-        </span>
+        </Link>
         <h4>Sign in</h4>
 
         {formError && (
@@ -65,18 +66,13 @@ export function LoginPage() {
           {fieldErrors.email && <em className="field-error">{fieldErrors.email}</em>}
         </label>
 
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={fieldErrors.password ? true : undefined}
-          />
-          {fieldErrors.password && <em className="field-error">{fieldErrors.password}</em>}
-        </label>
+        <PasswordField
+          name="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+          error={fieldErrors.password}
+        />
 
         <button className="cta" type="submit" disabled={pending} style={{ marginTop: 8 }}>
           {pending ? 'Signing in…' : 'Sign in'}

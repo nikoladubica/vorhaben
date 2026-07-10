@@ -164,9 +164,9 @@ export function TryCanvasPage() {
   return (
     <div className="demo">
       <header className="demo-top">
-        <span className="wordmark">
+        <Link className="wordmark" to="/">
           <span className="sq" aria-hidden="true"></span>VORHABEN
-        </span>
+        </Link>
         <Link className="demo-home" to="/">
           ← Home
         </Link>

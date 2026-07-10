@@ -8,6 +8,7 @@ import type {
   ProjectMetrics,
   ProjectPayload,
   ProjectType,
+  ProjectWithMetrics,
   Trend,
 } from '../types';
 
@@ -27,8 +28,8 @@ function buildQuery(filters: ProjectFilters): string {
   return qs ? `?${qs}` : '';
 }
 
-export function listProjects(filters: ProjectFilters = {}): Promise<Project[]> {
-  return api.get<Project[]>(`/projects${buildQuery(filters)}`);
+export function listProjects(filters: ProjectFilters = {}): Promise<ProjectWithMetrics[]> {
+  return api.get<ProjectWithMetrics[]>(`/projects${buildQuery(filters)}`);
 }
 
 export function getProject(id: number): Promise<Project> {

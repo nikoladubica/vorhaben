@@ -99,6 +99,7 @@ export interface NormalizationOptions {
 
 export interface ProjectMetrics {
   totalRevenue: number | null; // all-time sum of every income entry (converted); null when none exist
+  totalExpenses: number | null; // all-time sum of every expense entry (converted); null when none exist
   monthlyRevenue: number | null; // null when no contributing income entries exist for the window
   monthlyExpenses: number | null; // null when no contributing expense entries exist for the window
   monthlyNet: number | null; // revenue − expenses; null only when BOTH sides are null
@@ -208,6 +209,10 @@ export function computeProjectMetrics(
   // paid in total" figure the UI shows next to the normalized ones.
   const totalRevenue = entries.length > 0 ? sumConverted(entries) : null;
 
+  // All-time gross expenses — the money-out counterpart of totalRevenue. Powers the detail
+  // screen's optional "spent to date" and "difference to date" KPIs.
+  const totalExpenses = expenses.length > 0 ? sumConverted(expenses) : null;
+
   // --- Effective hourly rate --------------------------------------------
   // Always WINDOWED NET (revenue − expenses in the window) over windowed hours; never the
   // amortized figure, never zero-divide.
@@ -216,6 +221,7 @@ export function computeProjectMetrics(
 
   return {
     totalRevenue,
+    totalExpenses,
     monthlyRevenue,
     monthlyExpenses,
     monthlyNet,

@@ -71,7 +71,7 @@ export function TrendChart({ trend, baseCurrency }: TrendChartProps) {
   }
 
   return (
-    <figure className="chart" style={{ margin: 0 }}>
+    <figure className="chart trend-fig" style={{ margin: 0 }}>
       <svg
         className="trend"
         viewBox={`0 0 ${W} ${H}`}

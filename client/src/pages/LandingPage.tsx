@@ -20,9 +20,9 @@ export function LandingPage() {
   return (
     <div className="ld">
       <header className="ld-top">
-        <span className="wordmark">
+        <Link className="wordmark" to="/">
           <span className="sq" aria-hidden="true"></span>VORHABEN
-        </span>
+        </Link>
         <nav className="ld-nav" aria-label="Landing sections">
           <a href="#how-it-works">How it works</a>
           <a href="#voice">Voice capture</a>
@@ -306,9 +306,9 @@ export function LandingPage() {
       </main>
 
       <footer className="ld-foot">
-        <span className="wordmark">
+        <Link className="wordmark" to="/">
           <span className="sq" aria-hidden="true"></span>VORHABEN
-        </span>
+        </Link>
         <span className="ld-foot-note">Vorhaben — German for “undertaking”. MIT licensed.</span>
       </footer>
     </div>

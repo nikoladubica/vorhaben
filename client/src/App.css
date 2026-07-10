@@ -5,12 +5,18 @@
 }
 
 .topbar {
+  height: 56px;
+  border-bottom: 1px solid var(--hairline);
+}
+/* full-bleed bar, but content aligned to the same width as the page below it */
+.topbar-inner {
   display: flex;
   align-items: center;
   gap: 40px;
+  height: 100%;
   padding: 0 28px;
-  height: 56px;
-  border-bottom: 1px solid var(--hairline);
+  max-width: var(--page-max);
+  margin: 0 auto;
 }
 
 .wordmark {
@@ -20,31 +26,15 @@
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.1em;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
 }
 .wordmark .sq {
   width: 14px;
   height: 14px;
-  background: var(--red);
-  position: relative;
+  background: url('./assets/logo.svg') center / contain no-repeat;
   flex: none;
-}
-.wordmark .sq::before,
-.wordmark .sq::after {
-  content: '';
-  position: absolute;
-  background: #fff;
-}
-.wordmark .sq::before {
-  left: 6px;
-  top: 3px;
-  width: 2px;
-  height: 8px;
-}
-.wordmark .sq::after {
-  left: 3px;
-  top: 6px;
-  width: 8px;
-  height: 2px;
 }
 
 nav.main {
@@ -107,9 +97,56 @@ nav.main .soon {
 
 .page {
   padding: 28px;
+  max-width: var(--page-max);
+  margin: 0 auto;
 }
 .app-boot {
   min-height: 100vh;
+}
+
+/* dashboard KPI summary row (design screen 01) — four hairline-boxed headline figures */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--hairline);
+  border-left: 1px solid var(--hairline);
+  margin-bottom: 24px;
+}
+.kpi {
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  padding: 18px 20px 16px;
+  background: var(--surface);
+}
+.kpi .lbl {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.kpi .val {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 8px;
+}
+.kpi .sub {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.delta-up {
+  color: var(--good);
+  font-weight: 600;
+}
+.delta-down {
+  /* a decline is never shown in red — red is reserved for the accent */
+  color: var(--ink-2);
+  font-weight: 600;
 }
 
 /* page heads (placeholder pages reuse the dashboard head) */
@@ -174,6 +211,37 @@ nav.main .soon {
   font-size: 12px;
   font-style: normal;
   color: var(--red);
+}
+
+/* password show/hide toggle */
+.password-wrap {
+  position: relative;
+  display: flex;
+}
+.password-wrap input {
+  padding-right: 40px;
+}
+.password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.password-toggle:hover {
+  color: var(--ink);
+}
+.password-toggle:focus-visible {
+  outline: none;
+  color: var(--ink);
 }
 
 /* ————— primary action ————— */
@@ -698,49 +766,77 @@ table.projects th.r {
   color: var(--ink-2);
 }
 
-/* revenue / expenses / net summary strip (ticket 18) — normalized base-currency figures, with
-   the all-time total at the far right. The window note is red by explicit product decision — a
-   deliberate exception to the one-red-per-view rule so the "these are projections" caveat is
-   impossible to miss. */
-.pd-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* project-detail overview bar — the design's `.kpis` grid plus a customise control below it. The
+   selected figures render in the shared .kpis grid; the filter row lets the user add the money-out
+   counterparts (expenses / net / spent / difference). */
+.pd-kpis {
   margin-top: 16px;
-  padding: 12px 16px;
-  background: var(--paper);
+  margin-bottom: 24px;
+}
+.pd-kpis .kpis {
+  margin-bottom: 0;
+}
+.kpi-filter {
+  position: relative;
+  margin-top: 10px;
+}
+/* Checkbox popover — hairline, square, surface ground (matches the canvas .cv-menu family). */
+.kpi-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: 260px;
+  background: var(--surface);
   border: 1px solid var(--hairline);
+  z-index: 5;
 }
-.pd-sum-row {
-  display: flex;
-  align-items: baseline;
-  gap: 28px;
-  flex-wrap: wrap;
-}
-.pd-sum-item.total {
-  margin-left: auto;
-}
-.pd-sum-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.pd-sum-item .l {
-  font-size: 11px;
+.kpi-menu .mh {
+  padding: 10px 12px 6px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
-.pd-sum-item b {
-  font-size: 18px;
-  font-weight: 600;
+.kpi-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  text-align: left;
+  padding: 7px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
   color: var(--ink);
-  letter-spacing: -0.01em;
 }
-.pd-sum-note {
+.kpi-menu button:hover {
+  background: var(--paper);
+}
+.kpi-menu button.on {
+  font-weight: 600;
+}
+.kpi-menu button[disabled] {
+  cursor: default;
+  color: var(--ink-2);
+}
+.kpi-menu .box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border: 1px solid var(--ink-3);
   font-size: 11px;
-  color: var(--red);
+  line-height: 1;
+  color: var(--surface);
+}
+.kpi-menu button.on .box {
+  background: var(--ink);
+  border-color: var(--ink);
 }
 
 /* two-column layout + key/value compensation panel (from the design file) */
@@ -749,6 +845,13 @@ table.projects th.r {
   grid-template-columns: 2fr 1fr;
   gap: 24px;
   margin-top: 24px;
+}
+/* A stacked column of panels inside `.cols` — a uniform 24px gap between each panel, so every
+   boundary (income/expenses/time/data on the left, compensation/notes on the right) is even. */
+.pd-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 .kv {
   display: flex;
@@ -1420,6 +1523,12 @@ tr.expected td.r {
 figure.chart {
   margin: 0;
 }
+/* The trend chart fills its 2fr income column. It no longer grows without bound on wide screens
+   because the page itself is capped at --page-max, so the column (and thus the chart's ticks and
+   value labels) stays a fixed size on any desktop rather than tracking the viewport. */
+.trend-fig {
+  max-width: 100%;
+}
 svg text {
   font-family: var(--sans);
 }
@@ -1456,11 +1565,13 @@ svg text {
 }
 
 /* rankings: two panels side by side (a wider arrangement than the design's single 1fr panel) */
-.rank-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+/* the monthly-income ranking sits full width below the income/rate row; cap the row width so its
+   bars keep sane lengths (and echo the income chart's own width) instead of stretching edge-to-edge */
+.rank-solo {
   margin-top: 24px;
+}
+.rank-solo .rank {
+  max-width: 640px;
 }
 .rank {
   display: flex;
@@ -1928,6 +2039,9 @@ a.tl-row:hover .tl-n {
   .cols {
     grid-template-columns: 1fr;
   }
+  .kpis {
+    grid-template-columns: 1fr 1fr;
+  }
   .entry-add,
   .entry-add.income,
   .entry-add.expense {
@@ -1935,9 +2049,6 @@ a.tl-row:hover .tl-n {
   }
   .fx-add {
     grid-template-columns: 1fr 1fr;
-  }
-  .rank-cols {
-    grid-template-columns: 1fr;
   }
   .focus .panel-b {
     grid-template-columns: 1fr;

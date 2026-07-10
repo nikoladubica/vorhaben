@@ -401,7 +401,7 @@ export function TimeLogsSection({
   const addMessage = addError ?? firstError(addErrors);
 
   return (
-    <div className="panel" style={{ marginTop: 24 }}>
+    <div className="panel">
       <div className="panel-h">
         <span className="t">Time logged</span>
         <span className="s num">{summary}</span>

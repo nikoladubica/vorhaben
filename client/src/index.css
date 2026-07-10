@@ -12,6 +12,7 @@
   --bar-mute: #a9a7a1; /* de-emphasis mark, single-series charts */
   --good: #006300;
   --sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --page-max: 1200px; /* desktop content cap — the app is information-dense, not full-bleed */
 }
 
 /* This design deliberately commits to a light, paper-white world (per brief). */

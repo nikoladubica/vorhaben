@@ -13,7 +13,8 @@ import type { Dashboard, Suggestion } from '../api/dashboard';
 import { getDashboard, getSuggestions } from '../api/dashboard';
 import { listProjectTypes } from '../api/projects';
 import type { ProjectType } from '../types';
-import { RankingsPanels } from '../components/dashboard/RankingsPanels';
+import { KpiRow } from '../components/dashboard/KpiRow';
+import { RankingPanel } from '../components/dashboard/RankingPanel';
 import { FocusCallout } from '../components/dashboard/FocusCallout';
 import { TrendChart } from '../components/dashboard/TrendChart';
 import { CompositionBar } from '../components/dashboard/CompositionBar';
@@ -105,7 +106,12 @@ export function DashboardPage() {
     <div className="dash-head">
       <h3>Overview</h3>
       <div className="dash-controls">
-        {dashboard && <span className="period num">base currency {dashboard.base_currency}</span>}
+        {dashboard && (
+          <span className="period num">
+            {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · base
+            currency {dashboard.base_currency}
+          </span>
+        )}
         <div className="seg" role="radiogroup" aria-label="Trend window in months">
           {WINDOW_OPTIONS.map((option) => (
             <div className="sopt" key={option}>
@@ -157,8 +163,8 @@ export function DashboardPage() {
         <div className="panel">
           <div className="table-empty">
             <p>
-              Nothing to show yet. Add a project and log some income to see where your time pays
-              off best.
+              Nothing to show yet. Add a project and log some income to see where your time pays off
+              best.
             </p>
             <Link className="btn primary sm" to="/projects/new">
               Create your first project
@@ -177,22 +183,43 @@ export function DashboardPage() {
 
       <MissingRatesNotice currencies={warnings.missing_rates} />
 
-      <div className="panel">
-        <div className="panel-h">
-          <span className="t">Income, last {months} months</span>
-          <span className="s num">monthly-equivalent · {base_currency}</span>
+      <KpiRow dashboard={dashboard} baseCurrency={base_currency} />
+
+      {/* Income chart (2fr) beside the effective-hourly-rate ranking (1fr), per design screen 01. */}
+      <div className="cols">
+        <div className="panel">
+          <div className="panel-h">
+            <span className="t">Income, last {months} months</span>
+            <span className="s num">monthly-equivalent · {base_currency}</span>
+          </div>
+          <div className="panel-b">
+            <TrendChart trend={trend} baseCurrency={base_currency} />
+          </div>
         </div>
-        <div className="panel-b">
-          <TrendChart trend={trend} baseCurrency={base_currency} />
-        </div>
+
+        <RankingPanel
+          mode="rate"
+          title="Effective hourly rate"
+          subtitle="active projects"
+          projects={rankings.by_hourly_rate}
+          baseCurrency={base_currency}
+          typeLabel={typeLabel}
+          emptyText="Log hours to rank projects by effective rate."
+        />
       </div>
 
-      <RankingsPanels
-        byMonthlyRevenue={rankings.by_monthly_revenue}
-        byHourlyRate={rankings.by_hourly_rate}
-        baseCurrency={base_currency}
-        typeLabel={typeLabel}
-      />
+      {/* The other lens on the same projects — never merged with the rate ranking above. */}
+      <div className="rank-solo">
+        <RankingPanel
+          mode="revenue"
+          title="By monthly income"
+          subtitle="trailing 3 months"
+          projects={rankings.by_monthly_revenue}
+          baseCurrency={base_currency}
+          typeLabel={typeLabel}
+          emptyText="No ranked projects yet."
+        />
+      </div>
 
       <FocusCallout suggestions={suggestions} nameById={nameById} />
 

@@ -6,35 +6,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import type {
-  Project,
-  ProjectMetrics,
-  ProjectPayload,
-  ProjectStatus,
-  ProjectType,
-} from '../types';
-import {
-  getProject,
-  getProjectMetrics,
-  listProjectTypes,
-  updateProject,
-} from '../api/projects';
-import {
-  COMPENSATION_CONFIG,
-  modelHasAmount,
-} from '../domain/compensation';
-import {
-  formatFullDate,
-  formatMoney,
-  formatMonthYear,
-  todayString,
-} from '../domain/format';
+import type { Project, ProjectMetrics, ProjectPayload, ProjectStatus, ProjectType } from '../types';
+import { getProject, getProjectMetrics, listProjectTypes, updateProject } from '../api/projects';
+import { COMPENSATION_CONFIG, modelHasAmount } from '../domain/compensation';
+import { formatFullDate, formatMoney, formatMonthYear, todayString } from '../domain/format';
 import { StatusBadge } from '../components/projects/StatusBadge';
 import { EntriesSection } from '../components/entries/EntriesSection';
 import { ExpensesSection } from '../components/entries/ExpensesSection';
 import { TimeLogsSection } from '../components/entries/TimeLogsSection';
 import { NotesSection } from '../components/notes/NotesSection';
 import { ProjectDataSection } from '../components/projects/ProjectDataSection';
+import { ProjectKpiBar } from '../components/projects/ProjectKpiBar';
 
 // today minus 3 months, YYYY-MM-DD — the default range lower bound (normalization window §2.2).
 function threeMonthsAgo(): string {
@@ -62,16 +44,14 @@ type StatusOverride = { status?: ProjectStatus; end_date?: string | null };
 // Build a full PATCH payload from the current project plus an override. `ended` is derived, not
 // stored intent, so it maps back to `active` (the server rejects an explicit `ended`).
 function toPayload(project: Project, override: StatusOverride): ProjectPayload {
-  const status =
-    override.status ?? (project.status === 'ended' ? 'active' : project.status);
+  const status = override.status ?? (project.status === 'ended' ? 'active' : project.status);
   return {
     name: project.name,
     type: project.type,
     description: project.description,
     status,
     start_date: project.start_date,
-    end_date:
-      override.end_date !== undefined ? override.end_date : project.end_date,
+    end_date: override.end_date !== undefined ? override.end_date : project.end_date,
     compensation_model: project.compensation_model,
     rate_amount: project.rate_amount === null ? null : Number(project.rate_amount),
     rate_currency: project.rate_currency,
@@ -81,8 +61,7 @@ function toPayload(project: Project, override: StatusOverride): ProjectPayload {
 
 // Optimistic status for an override, computed exactly as the server would.
 function optimisticStatus(project: Project, override: StatusOverride): ProjectStatus {
-  const choice =
-    override.status ?? (project.status === 'ended' ? 'active' : project.status);
+  const choice = override.status ?? (project.status === 'ended' ? 'active' : project.status);
   const flag = choice === 'paused' ? 'paused' : choice === 'idea' ? 'idea' : null;
   const end = override.end_date !== undefined ? override.end_date : project.end_date;
   return deriveStatus(flag, project.start_date, end, todayString());
@@ -184,8 +163,7 @@ export function ProjectDetailPage() {
     setProject({
       ...project,
       status: optimisticStatus(project, override),
-      end_date:
-        override.end_date !== undefined ? override.end_date : project.end_date,
+      end_date: override.end_date !== undefined ? override.end_date : project.end_date,
     });
     try {
       const saved = await updateProject(previous.id, toPayload(previous, override));
@@ -226,11 +204,6 @@ export function ProjectDetailPage() {
   const toggleLabel = project.status === 'active' ? 'Pause' : 'Resume';
   const toggleTo: ProjectStatus = project.status === 'active' ? 'paused' : 'active';
   const currency = project.rate_currency ?? 'CHF';
-  // Three-figure normalized summary (base currency). A null figure shows an em dash; the
-  // "expenses" and "net" items only carry weight once expenses exist, but net always renders
-  // (it equals revenue when there are none).
-  const summaryFigure = (value: number | null): string =>
-    value === null ? '—' : formatMoney(String(value), metrics?.base_currency ?? currency);
   const rateDisplay =
     project.rate_amount === null
       ? '—'
@@ -289,20 +262,12 @@ export function ProjectDetailPage() {
               >
                 End project
               </button>
-              <button
-                type="button"
-                className="btn ghost sm"
-                onClick={() => setConfirmEnd(false)}
-              >
+              <button type="button" className="btn ghost sm" onClick={() => setConfirmEnd(false)}>
                 Cancel
               </button>
             </span>
           ) : (
-            <button
-              type="button"
-              className="btn ghost sm"
-              onClick={() => setConfirmEnd(true)}
-            >
+            <button type="button" className="btn ghost sm" onClick={() => setConfirmEnd(true)}>
               End project
             </button>
           )}
@@ -316,27 +281,7 @@ export function ProjectDetailPage() {
       )}
 
       {metrics && (
-        <div className="pd-summary num">
-          <span className="pd-sum-note">monthly-equivalent · trailing 3 months</span>
-          <div className="pd-sum-row">
-            <span className="pd-sum-item">
-              <span className="l">Projected revenue</span>
-              <b>{summaryFigure(metrics.monthly_revenue)}</b>
-            </span>
-            <span className="pd-sum-item">
-              <span className="l">Expenses</span>
-              <b>{summaryFigure(metrics.monthly_expenses)}</b>
-            </span>
-            <span className="pd-sum-item net">
-              <span className="l">Net</span>
-              <b>{summaryFigure(metrics.monthly_net)}</b>
-            </span>
-            <span className="pd-sum-item total">
-              <span className="l">Total revenue</span>
-              <b>{summaryFigure(metrics.total_revenue)}</b>
-            </span>
-          </div>
-        </div>
+        <ProjectKpiBar metrics={metrics} currency={currency} startDate={project.start_date} />
       )}
 
       <div className="range-filter">
@@ -362,7 +307,7 @@ export function ProjectDetailPage() {
       </div>
 
       <div className="cols">
-        <div>
+        <div className="pd-col">
           <EntriesSection
             projectId={project.id}
             from={from}
@@ -383,15 +328,15 @@ export function ProjectDetailPage() {
             from={from}
             to={to}
             currency={currency}
-            hourlyRate={
-              project.compensation_model === 'hourly' ? project.rate_amount : null
-            }
+            hourlyRate={project.compensation_model === 'hourly' ? project.rate_amount : null}
             onInvoiced={() => setEntriesReload((k) => k + 1)}
           />
-          <NotesSection projectId={project.id} />
+          {/* Data (export / import) sits below the income, expense and time tables it operates on
+              — the notes move to the side column, per design screen 04. */}
+          <ProjectDataSection projectId={project.id} />
         </div>
 
-        <div>
+        <div className="pd-col">
           <div className="panel">
             <div className="panel-h">
               <span className="t">Compensation</span>
@@ -419,10 +364,7 @@ export function ProjectDetailPage() {
               </div>
             </div>
           </div>
-          <ProjectDataSection projectId={project.id} />
-          {/* The normalized revenue / expenses / net figures now surface in the header summary
-              via GET /api/projects/:id/metrics (ticket 18). A fuller per-project trend chart in
-              this column is still open future work. */}
+          <NotesSection projectId={project.id} />
         </div>
       </div>
     </div>

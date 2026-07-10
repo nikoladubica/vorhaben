@@ -10,11 +10,7 @@ import {
   type ProjectStatus,
   type Trend,
 } from '../domain/constants.js';
-import {
-  deriveStatus,
-  flagFromStatus,
-  type StatusFlag,
-} from '../domain/projectStatus.js';
+import { deriveStatus, flagFromStatus, type StatusFlag } from '../domain/projectStatus.js';
 import { syncProjectTags } from '../db/tags.js';
 import { computeMetricsForUser } from '../domain/metrics.js';
 
@@ -86,18 +82,12 @@ function projectQuery(executor: Knex | Knex.Transaction) {
       'p.deleted_at',
       // SEPARATOR takes a string literal (not an expression like CHAR(31)), so embed the
       // unit-separator byte directly. TAG_SEP is a fixed constant — no injection surface.
-      executor.raw(
-        `GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR '${TAG_SEP}') as tag_names`,
-      ),
+      executor.raw(`GROUP_CONCAT(t.name ORDER BY t.name SEPARATOR '${TAG_SEP}') as tag_names`),
     );
 }
 
 // Fetch a single owned, non-deleted project with its tags. Returns undefined if missing.
-async function fetchOwnedProject(
-  executor: Knex | Knex.Transaction,
-  userId: number,
-  id: number,
-) {
+async function fetchOwnedProject(executor: Knex | Knex.Transaction, userId: number, id: number) {
   const row = await projectQuery(executor)
     .where('p.id', id)
     .andWhere('p.user_id', userId)
@@ -146,8 +136,7 @@ interface ValidatedInput {
 }
 
 type ValidationResult =
-  | { ok: true; value: ValidatedInput }
-  | { ok: false; fields: Record<string, string> };
+  { ok: true; value: ValidatedInput } | { ok: false; fields: Record<string, string> };
 
 function hasOwn(body: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(body, key);
@@ -208,10 +197,7 @@ async function validateProjectInput(
   // compensation_model ----------------------------------------------------
   if (provided('compensation_model')) {
     const raw = body.compensation_model;
-    if (
-      typeof raw !== 'string' ||
-      !COMPENSATION_MODELS.includes(raw as CompensationModel)
-    ) {
+    if (typeof raw !== 'string' || !COMPENSATION_MODELS.includes(raw as CompensationModel)) {
       fields.compensation_model = 'invalid';
     } else {
       columns.compensation_model = raw as CompensationModel;
@@ -398,9 +384,7 @@ projectsRouter.get('/', async (req, res) => {
   const userId = req.userId as number;
   const { status, type, tag } = req.query;
 
-  const query = projectQuery(db)
-    .where('p.user_id', userId)
-    .whereNull('p.deleted_at');
+  const query = projectQuery(db).where('p.user_id', userId).whereNull('p.deleted_at');
 
   if (typeof status === 'string' && status !== '') {
     query.andWhere('p.status', status);
@@ -423,7 +407,23 @@ projectsRouter.get('/', async (req, res) => {
   query.orderByRaw("(p.status = 'active') desc").orderBy('p.updated_at', 'desc');
 
   const rows = (await query) as ProjectRowWithTags[];
-  res.json(rows.map(mapProjectRow));
+
+  // Enrich each row with the same normalized figures the dashboard uses (one bulk pass over every
+  // project the user owns, including ended ones), so the projects list can show monthly-equivalent
+  // revenue, effective hourly rate and all-time earnings without an N+1 of /:id/metrics calls.
+  const metrics = await computeMetricsForUser(userId);
+  res.json(
+    rows.map((row) => {
+      const m = metrics.get(row.id);
+      return {
+        ...mapProjectRow(row),
+        total_revenue: roundMoney(m?.totalRevenue ?? null),
+        monthly_revenue: roundMoney(m?.monthlyRevenue ?? null),
+        monthly_net: roundMoney(m?.monthlyNet ?? null),
+        effective_hourly_rate: roundMoney(m?.effectiveHourlyRate ?? null),
+      };
+    }),
+  );
 });
 
 // POST /api/projects — create.
@@ -514,11 +514,15 @@ projectsRouter.get('/:id/metrics', async (req, res) => {
     project_id: id,
     base_currency: baseCurrency,
     total_revenue: roundMoney(m?.totalRevenue ?? null),
+    total_expenses: roundMoney(m?.totalExpenses ?? null),
     monthly_revenue: roundMoney(m?.monthlyRevenue ?? null),
     monthly_expenses: roundMoney(m?.monthlyExpenses ?? null),
     monthly_net: roundMoney(m?.monthlyNet ?? null),
     effective_hourly_rate: roundMoney(m?.effectiveHourlyRate ?? null),
     hours_in_window: m?.hoursInWindow ?? 0,
+    // Actual months spanned by the trailing window (≤ 3; shorter for young projects), so the UI
+    // can present hours as a per-month figure rather than a raw 3-month total.
+    window_months: m?.window.months ?? 0,
   });
 });
 
@@ -544,8 +548,7 @@ projectsRouter.patch('/:id', async (req, res) => {
     return;
   }
 
-  const { columns, statusFlag, effectiveStart, effectiveEnd, tagsProvided, tags } =
-    result.value;
+  const { columns, statusFlag, effectiveStart, effectiveEnd, tagsProvided, tags } = result.value;
   const status = deriveStatus({
     status_flag: statusFlag,
     start_date: effectiveStart,
