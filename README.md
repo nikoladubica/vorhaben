@@ -56,6 +56,22 @@ set `COOKIE_SECURE=true` in `.env` so the login cookie is marked `Secure`. Leave
 
 > Keep `JWT_SECRET` stable — changing it invalidates everyone's login sessions.
 
+### Voice capture (optional LLM structuring)
+
+Voice capture works with no configuration — transcription runs in the browser and a
+built-in rules parser turns the transcript into a checklist, note, reminder, or event.
+Setting an Anthropic API key upgrades the parse step to an LLM for cleaner titles, better
+item splitting, and resolved dates. It only ever improves the parse; every capture kind is
+fully usable without a key, and any LLM error falls back to the rules parser.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY` | _(unset)_ | Enables LLM structuring. Unset → rules parser only. Never exposed to the client. |
+| `VOICE_LLM_MODEL` | `claude-opus-4-8` | Model used for structuring when a key is set. |
+
+The transcript is sent to Anthropic only when a key is configured; audio never leaves the
+browser, and `POST /api/voice/parse` never persists anything.
+
 ## Development
 
 ### Prerequisites

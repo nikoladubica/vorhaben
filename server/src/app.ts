@@ -18,6 +18,10 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { accountRouter } from './routes/account.js';
 import { tagsRouter } from './routes/tags.js';
 import { exportRouter, importRouter } from './routes/exportImport.js';
+import { voiceRouter } from './routes/voice.js';
+import { checklistsRouter, checklistItemsRouter } from './routes/checklists.js';
+import { remindersRouter } from './routes/reminders.js';
+import { eventsRouter } from './routes/events.js';
 
 export const app = express();
 
@@ -57,6 +61,15 @@ app.use('/api/fx-rates', requireAuth, fxRatesRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
 app.use('/api/account', requireAuth, accountRouter);
 app.use('/api/tags', requireAuth, tagsRouter);
+// Voice capture (§ voice-capture). Transcript parsing (side-effect free) + capability probe, then
+// the four persist endpoints for the reviewed drafts. Each scopes rows by req.userId; a capture may
+// be filed against a project or left unassigned. checklist-items has its own flat mount for the
+// check/uncheck endpoint, mirroring the notes/single-note router split.
+app.use('/api/voice', requireAuth, voiceRouter);
+app.use('/api/checklists', requireAuth, checklistsRouter);
+app.use('/api/checklist-items', requireAuth, checklistItemsRouter);
+app.use('/api/reminders', requireAuth, remindersRouter);
+app.use('/api/events', requireAuth, eventsRouter);
 // CSV export/import (§8). Export streams one table per request; import parses a raw CSV text body
 // (its own express.text parser with a 10 MB ceiling lives on the route, and an overflow surfaces
 // as the shared 413 below).

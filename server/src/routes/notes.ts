@@ -22,6 +22,9 @@ interface NoteRow {
   project_id: number;
   title: string;
   body_md: string;
+  // Raw voice dictation that produced this note (voice-capture §4), or null for a hand-typed note.
+  // Mirrors the project rule of preserving originals rather than overwriting them.
+  source_transcript: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -33,6 +36,7 @@ function noteSelect(executor: Knex | Knex.Transaction) {
     'project_id',
     'title',
     'body_md',
+    'source_transcript',
     'created_at',
     'updated_at',
   );
@@ -55,6 +59,7 @@ function hasOwn(body: Record<string, unknown>, key: string): boolean {
 interface ValidatedNoteColumns {
   title?: string;
   body_md?: string;
+  source_transcript?: string | null;
 }
 
 // Mirrors the sibling routes' result shape. `tooLarge` flags the one case that maps to 413
@@ -111,6 +116,21 @@ function validateNoteInput(
     } else {
       // Stored exactly as sent — control chars, `<script>`, Markdown tables and all.
       columns.body_md = raw;
+    }
+  }
+
+  // source_transcript (optional; the raw voice dictation that produced this note, or null for a
+  // manual note). Voice-capture §4 sends it on create; the manual note path omits it. Capped at
+  // the same 10,000-char ceiling as POST /api/voice/parse, since that is the largest transcript
+  // the parse endpoint accepts.
+  if (provided('source_transcript')) {
+    const raw = body.source_transcript;
+    if (raw === null || raw === undefined) {
+      columns.source_transcript = null;
+    } else if (typeof raw !== 'string' || raw.length > 10_000) {
+      fields.source_transcript = 'invalid';
+    } else {
+      columns.source_transcript = raw;
     }
   }
 
@@ -186,6 +206,7 @@ projectNotesRouter.post('/:id/notes', async (req, res) => {
     project_id: id,
     title: result.value.title,
     body_md: result.value.body_md ?? '',
+    source_transcript: result.value.source_transcript ?? null,
     created_at: db.fn.now(),
     updated_at: db.fn.now(),
   });
@@ -232,6 +253,7 @@ notesRouter.get('/', async (req, res) => {
       'n.project_id',
       'n.title',
       'n.body_md',
+      'n.source_transcript',
       'n.created_at',
       'n.updated_at',
       'p.name as project_name',

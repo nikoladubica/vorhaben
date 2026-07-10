@@ -32,6 +32,12 @@ export const env = {
   // process must fail fast if it is missing. In dev/self-host a stable fallback
   // keeps local setup frictionless.
   jwtSecret: required('JWT_SECRET', nodeEnv === 'production' ? undefined : 'dev-insecure-jwt-secret-change-me'),
+  // Voice-capture LLM structuring (§ voice-capture, step 4). Both are read straight from the
+  // environment and are OPTIONAL — the LLM path activates only when anthropicApiKey is set;
+  // otherwise capture degrades to the rules parser. Never write these to a .env file, and never
+  // expose either value to the client (GET /api/voice/capabilities leaks only a boolean).
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  voiceLlmModel: process.env.VOICE_LLM_MODEL ?? 'claude-haiku-4-5',
   db: {
     host: required('DB_HOST', 'localhost'),
     port: Number(process.env.DB_PORT ?? 3307),
