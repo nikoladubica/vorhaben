@@ -29,6 +29,7 @@ import { invoicesRouter } from './routes/invoices.js';
 import { checklistsRouter, checklistItemsRouter } from './routes/checklists.js';
 import { remindersRouter } from './routes/reminders.js';
 import { eventsRouter } from './routes/events.js';
+import { digestRouter } from './routes/digest.js';
 
 export const app = express();
 
@@ -43,6 +44,9 @@ app.use(cookieParser());
 
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
+// Monthly email digest (ticket 16). PUBLIC, no auth: the unsubscribe link is clicked from an inbox
+// and authenticates by its unguessable per-user token alone. Opt-out only — it can never enable mail.
+app.use('/api/digest', digestRouter);
 app.use('/api/projects', requireAuth, projectsRouter);
 // Nested income-entry routes (/:id/entries) share the /api/projects mount; /:id is a single
 // segment so it never captures /:id/entries, and projectsRouter falls through to here.

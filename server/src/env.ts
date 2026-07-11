@@ -68,6 +68,25 @@ export const env = {
     invoiceScanModel: process.env.INVOICE_SCAN_MODEL ?? 'claude-sonnet-5',
     invoiceScanMonthlyCap: Number(process.env.INVOICE_SCAN_MONTHLY_CAP ?? 100),
   },
+  // Public base URL of this instance — used ONLY to build absolute links in outbound email (the
+  // monthly digest's "open dashboard" and unsubscribe links). Defaults to the CORS origin (the Vite
+  // dev server locally); set PUBLIC_BASE_URL to the real hostname in production, where the API and
+  // client share one origin. Never written to a .env file by the app.
+  publicBaseUrl: process.env.PUBLIC_BASE_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  // Monthly email digest (ticket 16; BUSINESS_LOGIC §7/§8). Outbound mail goes through a self-hosted
+  // Postfix MTA over LOCAL SMTP — no third-party transactional service (see
+  // .claude/docs/backend/email-digest.md). The whole feature is INERT until SMTP_HOST is set, so the
+  // digest job is a safe no-op on instances that never configured mail. Auth is optional (a local
+  // Postfix relay usually needs none). Never write these to a .env file.
+  smtp: {
+    host: process.env.SMTP_HOST, // e.g. 'localhost' — the local Postfix listener
+    port: Number(process.env.SMTP_PORT ?? 25),
+    user: process.env.SMTP_USER, // optional SMTP AUTH user
+    pass: process.env.SMTP_PASS, // optional SMTP AUTH password
+    // The From header. digest@vorhaben.app must be a domain the server is authorized to send for
+    // (SPF/DKIM aligned — see the runbook), or mail lands in spam.
+    from: process.env.DIGEST_FROM ?? 'Vorhaben <digest@vorhaben.app>',
+  },
   db: {
     host: required('DB_HOST', 'localhost'),
     port: Number(process.env.DB_PORT ?? 3307),
