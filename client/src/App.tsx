@@ -5,6 +5,7 @@ import { AppLayout } from './layout/AppLayout';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectFormPage } from './pages/ProjectFormPage';
@@ -35,6 +36,17 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/try-canvas" element={<TryCanvasPage />} />
+
+      {/* The Honesty Contract (ticket 03). Its own full-page surface — authenticated but outside
+          AppLayout, so it never nests inside the app chrome or the onboarding gate. */}
+      <Route
+        path="/welcome"
+        element={
+          <RequireAuth>
+            <OnboardingPage />
+          </RequireAuth>
+        }
+      />
 
       <Route element={<HomeGate />}>
         <Route path="/" element={<DashboardPage />} />

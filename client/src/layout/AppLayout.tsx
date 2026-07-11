@@ -1,5 +1,8 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
+import { listProjects } from '../api/projects';
+import { isOnboarded, markOnboarded } from '../onboarding';
 
 function initials(email: string): string {
   const local = email.split('@')[0] ?? '';
@@ -8,10 +11,64 @@ function initials(email: string): string {
   return letters.toUpperCase() || '?';
 }
 
+// The onboarding gate (ticket 03). Every authenticated app page renders through AppLayout, so this
+// is the single place a fresh account gets routed to the Honesty Contract. Once a user is onboarded
+// (finished the flow, skipped it, or has ≥1 project) the check short-circuits with no network call.
+type GateState = 'checking' | 'ok' | 'redirect';
+
+function useOnboardingGate(userId: number | null): GateState {
+  const [state, setState] = useState<GateState>('checking');
+
+  useEffect(() => {
+    if (userId === null) {
+      // Not a signed-in user (RequireAuth/HomeGate handle that) — nothing to gate.
+      setState('ok');
+      return;
+    }
+    if (isOnboarded(userId)) {
+      setState('ok');
+      return;
+    }
+    // First authenticated load for this account: a user with projects has effectively onboarded
+    // already, so we mark them and never check again; a truly empty account is sent to /welcome.
+    let cancelled = false;
+    setState('checking');
+    listProjects()
+      .then((rows) => {
+        if (cancelled) return;
+        if (rows.length > 0) {
+          markOnboarded(userId);
+          setState('ok');
+        } else {
+          setState('redirect');
+        }
+      })
+      .catch(() => {
+        // Never trap the user behind a failed check — let the app render.
+        if (!cancelled) setState('ok');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  return state;
+}
+
 export function AppLayout() {
   const auth = useAuth();
   const navigate = useNavigate();
   const email = auth.status === 'user' ? auth.user.email : '';
+  const userId = auth.status === 'user' ? auth.user.id : null;
+
+  const gate = useOnboardingGate(userId);
+  if (gate === 'checking') {
+    // Resolve before painting so a fresh account never flashes the app then bounces to /welcome.
+    return <div className="app-boot" aria-hidden="true" />;
+  }
+  if (gate === 'redirect') {
+    return <Navigate to="/welcome" replace />;
+  }
 
   async function onLogout() {
     await auth.logout();

@@ -15,13 +15,30 @@ import { getCanvas, placeProject, removeFromBoard } from '../api/canvas';
 import { setProjectFeeling, setProjectTrend } from '../api/projects';
 import { createNote } from '../api/notes';
 import { CanvasBoardView } from '../components/canvas/CanvasBoardView';
+import { useAuth } from '../auth/useAuth';
+import { clearCanvasHint, isCanvasHintPending } from '../onboarding';
 import './canvas.css';
 
 export function Canvas() {
+  const auth = useAuth();
+  const userId = auth.status === 'user' ? auth.user.id : null;
+
   const [placed, setPlaced] = useState<CanvasItem[]>([]);
   const [tray, setTray] = useState<CanvasItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // One-time "set today's mood" hint (ticket 03), armed when the first project is created via the
+  // welcome flow. Shown once, retired on dismiss — never animated, never resurrected.
+  const [showHint, setShowHint] = useState(false);
+  useEffect(() => {
+    if (userId !== null && isCanvasHintPending(userId)) setShowHint(true);
+  }, [userId]);
+
+  function dismissHint() {
+    if (userId !== null) clearCanvasHint(userId);
+    setShowHint(false);
+  }
 
   // Names of notes attached this session, per project — shown as named chips.
   const [fileChips, setFileChips] = useState<Record<number, string[]>>({});
@@ -188,6 +205,21 @@ export function Canvas() {
       <div className="dash-head">
         <h3>Canvas</h3>
       </div>
+
+      {showHint && (
+        <div className="canvas-hint" role="note">
+          <div className="ch-body">
+            <p className="ch-k">Start here</p>
+            <p className="ch-t">
+              Set today’s mood for this project. Change it any time it changes — every change is
+              kept.
+            </p>
+          </div>
+          <button type="button" className="ch-x" aria-label="Dismiss hint" onClick={dismissHint}>
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="panel">
         <div className="cv-promo">

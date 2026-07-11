@@ -468,3 +468,47 @@
     flex: 1 1 auto;
   }
 }
+
+/* ————— one-time onboarding hint (ticket 03) ————— */
+/* Shown once after the welcome-flow first project. The single red mark is the inset left rule,
+   borrowed from .nl-item.on — no glow, no motion, retired on dismiss. */
+.canvas-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  box-shadow: inset 2px 0 0 var(--red);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.canvas-hint .ch-body {
+  flex: 1;
+}
+.canvas-hint .ch-k {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
+}
+.canvas-hint .ch-t {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 4px 0 0;
+}
+.canvas-hint .ch-x {
+  flex: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-3);
+  padding: 2px 4px;
+}
+.canvas-hint .ch-x:hover {
+  color: var(--ink);
+}

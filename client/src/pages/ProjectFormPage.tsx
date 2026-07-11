@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api';
 import type { CompensationModel, ProjectPayload, ProjectStatus, ProjectType } from '../types';
 import {
@@ -78,8 +78,12 @@ function fieldMessage(field: string, code: string): string {
 export function ProjectFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isEdit = id !== undefined;
   const projectId = id ? Number(id) : null;
+  // The Honesty Contract (ticket 03) sends the user here with ?welcome=1 for their first project;
+  // on success we land them on the canvas — where the habit starts — instead of the projects list.
+  const fromWelcome = searchParams.get('welcome') === '1';
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [types, setTypes] = useState<ProjectType[]>([]);
@@ -177,10 +181,11 @@ export function ProjectFormPage() {
     try {
       if (isEdit && projectId !== null) {
         await updateProject(projectId, buildPayload());
+        navigate('/projects');
       } else {
         await createProject(buildPayload());
+        navigate(fromWelcome ? '/canvas' : '/projects');
       }
-      navigate('/projects');
     } catch (err) {
       if (err instanceof ApiError && err.fields) {
         setFieldErrors(err.fields);
