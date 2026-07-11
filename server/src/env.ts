@@ -32,6 +32,12 @@ export const env = {
   // process must fail fast if it is missing. In dev/self-host a stable fallback
   // keeps local setup frictionless.
   jwtSecret: required('JWT_SECRET', nodeEnv === 'production' ? undefined : 'dev-insecure-jwt-secret-change-me'),
+  // Secret used to encrypt at-rest secrets (currently a self-hoster's bring-your-own assistant API
+  // key — ticket 13). OPTIONAL: when unset we derive from jwtSecret so encryption works out of the
+  // box for local/self-host, but operators can rotate it independently. Rotating it (or jwtSecret,
+  // when this is unset) makes previously stored keys undecryptable — the user simply re-enters the
+  // key; nothing crashes. Never write this to a .env file.
+  assistantKeySecret: process.env.ASSISTANT_KEY_SECRET,
   // Voice-capture LLM structuring (§ voice-capture, step 4). Both are read straight from the
   // environment and are OPTIONAL — the LLM path activates only when anthropicApiKey is set;
   // otherwise capture degrades to the rules parser. Never write these to a .env file, and never

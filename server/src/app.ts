@@ -21,6 +21,7 @@ import { matrixRouter } from './routes/matrix.js';
 import { closesRouter } from './routes/closes.js';
 import { statementsRouter } from './routes/statements.js';
 import { accountRouter } from './routes/account.js';
+import { settingsRouter } from './routes/settings.js';
 import { tagsRouter } from './routes/tags.js';
 import { exportRouter, importRouter } from './routes/exportImport.js';
 import { voiceRouter } from './routes/voice.js';
@@ -85,6 +86,9 @@ app.use('/api/closes', requireAuth, closesRouter);
 // Every query is user-scoped and soft-delete aware; all money is converted server-side.
 app.use('/api/statements', requireAuth, statementsRouter);
 app.use('/api/account', requireAuth, accountRouter);
+// Assistant settings (ticket 13): the caller's hosted plan (read-only) + their optional encrypted
+// bring-your-own assistant API key. User-scoped via req.userId; the key is never returned.
+app.use('/api/settings', requireAuth, settingsRouter);
 app.use('/api/tags', requireAuth, tagsRouter);
 // Voice capture (§ voice-capture). Transcript parsing (side-effect free) + capability probe, then
 // the four persist endpoints for the reviewed drafts. Each scopes rows by req.userId; a capture may

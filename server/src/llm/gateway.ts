@@ -19,6 +19,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '../env.js';
 import { db } from '../db/index.js';
+import { decryptSecret } from '../crypto/secretBox.js';
 
 // The metered pipelines. Kept as data (mirrors the llm_usage.feature closed list) so adding a
 // feature is additive. `voice_parse` and `digest` are PIPELINE features (may draw on the reserve);
@@ -134,21 +135,37 @@ async function recordUsage(
   }
 }
 
+// A user's stored bring-your-own key (ticket 13), decrypted. Returns undefined when none is set or
+// the stored envelope no longer decrypts (e.g. the instance secret was rotated) — the caller then
+// falls back to the platform key and metering, exactly as if no BYOK key existed.
+async function resolveStoredByokKey(userId: number): Promise<string | undefined> {
+  const row = (await db('users')
+    .where({ id: userId })
+    .first('assistant_api_key_encrypted')) as { assistant_api_key_encrypted: string | null } | undefined;
+  const stored = row?.assistant_api_key_encrypted;
+  if (!stored) return undefined;
+  return decryptSecret(stored) ?? undefined;
+}
+
 export interface CallLlmOptions {
   userId: number;
   feature: LlmFeature;
   // The Anthropic request MINUS `model` — the gateway sets the model from the feature so tiering
   // lives in one place and callers can't accidentally route to the wrong model.
   request: Omit<Anthropic.MessageCreateParamsNonStreaming, 'model'>;
-  // Future BYOK: a user's own Anthropic key. When present the call uses that key and is NEITHER
-  // metered NOR capped. Wire the plumbing now; the settings UI that captures the key ships later.
+  // A user's own Anthropic key. When present the call uses that key and is NEITHER metered NOR
+  // capped. Callers usually omit this: the gateway loads the user's stored BYOK key (ticket 13)
+  // automatically. Pass it only to override the stored key for a single call.
   byokKey?: string;
 }
 
 // The one entry point. Returns the Anthropic Message, or throws BudgetExceededError when a metered
 // user is over budget for the requested feature.
 export async function callLLM(opts: CallLlmOptions): Promise<Anthropic.Message> {
-  const { userId, feature, request, byokKey } = opts;
+  const { userId, feature, request } = opts;
+
+  // An explicit override wins; otherwise use the user's stored BYOK key (ticket 13) if any.
+  const byokKey = opts.byokKey ?? (await resolveStoredByokKey(userId));
 
   // BYOK bypasses metering and the cap entirely. Otherwise this is a platform-key call and counts.
   const metered = !byokKey;
