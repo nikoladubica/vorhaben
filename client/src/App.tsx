@@ -6,6 +6,7 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { OnboardingPage } from './pages/OnboardingPage';
+import { ClosePage } from './pages/ClosePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectFormPage } from './pages/ProjectFormPage';
@@ -44,6 +45,17 @@ function App() {
         element={
           <RequireAuth>
             <OnboardingPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* The Weekly Close (ticket 04). Its own full-page ritual surface — authenticated but outside
+          AppLayout, so the calm walk is set apart from the app chrome, like the Honesty Contract. */}
+      <Route
+        path="/close"
+        element={
+          <RequireAuth>
+            <ClosePage />
           </RequireAuth>
         }
       />

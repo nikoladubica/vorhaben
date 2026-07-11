@@ -7,12 +7,14 @@ import { AccountSection } from '../components/settings/AccountSection';
 import { FxRatesSection } from '../components/settings/FxRatesSection';
 import { TagsSection } from '../components/settings/TagsSection';
 import { DataSection } from '../components/settings/DataSection';
+import { CloseSettingsSection } from '../components/settings/CloseSettingsSection';
 
-type SectionId = 'account' | 'currency' | 'tags' | 'data';
+type SectionId = 'account' | 'currency' | 'weekly-close' | 'tags' | 'data';
 
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: 'account', label: 'Account' },
   { id: 'currency', label: 'Currency & rates' },
+  { id: 'weekly-close', label: 'Weekly Close' },
   { id: 'tags', label: 'Tags' },
   { id: 'data', label: 'Data' },
 ];
@@ -44,6 +46,7 @@ export function SettingsPage() {
         <div className="set-body">
           {active === 'account' && <AccountSection />}
           {active === 'currency' && <FxRatesSection />}
+          {active === 'weekly-close' && <CloseSettingsSection />}
           {active === 'tags' && <TagsSection />}
           {active === 'data' && <DataSection />}
         </div>

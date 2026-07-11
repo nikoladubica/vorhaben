@@ -14,16 +14,23 @@ export function listProjectMoods(projectId: number, limit?: number): Promise<Moo
   return api.get<MoodEvent[]>(`/projects/${projectId}/moods${qs}`);
 }
 
-// Log a mood change, optionally carrying a one-line "why" note. This is the note-carrying write
-// path (source 'manual'); a note always appends a new event, even inside the settling window. An
+// Which flow logged a mood. Defaults to 'manual' at the API; the Weekly Close passes 'weekly_close'
+// so the shared write path tags provenance without a parallel route. Keep in sync with the server's
+// MOOD_SOURCES (server/src/domain/mood.ts).
+export type MoodSource = 'manual' | 'nudge' | 'weekly_close';
+
+// Log a mood change, optionally carrying a one-line "why" note and a source marker. This is the
+// note-carrying write path; a note always appends a new event, even inside the settling window. An
 // empty/whitespace note is treated as no note by the server.
 export function logProjectMood(
   projectId: number,
   value: Feeling | null,
   note?: string,
+  source?: MoodSource,
 ): Promise<MoodEvent> {
-  const body: { value: Feeling | null; note?: string } = { value };
+  const body: { value: Feeling | null; note?: string; source?: MoodSource } = { value };
   if (note !== undefined) body.note = note;
+  if (source !== undefined) body.source = source;
   return api.post<MoodEvent>(`/projects/${projectId}/moods`, body);
 }
 

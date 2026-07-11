@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 import { db } from '../db/index.js';
 import { assertProjectOwned } from '../domain/ownership.js';
 import { FEELINGS, type Feeling } from '../domain/constants.js';
-import { recordMood } from '../domain/mood.js';
+import { recordMood, MOOD_SOURCES, type MoodSource } from '../domain/mood.js';
 
 // Two routers, mirroring the notes split: the nested one mounts alongside projectsRouter at
 // /api/projects and owns the `/:id/moods` paths; the flat one mounts at /api/moods and owns
@@ -124,12 +124,24 @@ projectMoodsRouter.post('/:id/moods', async (req, res) => {
     }
   }
 
+  // source: optional flow marker (manual | nudge | weekly_close). Defaults to 'manual'; the Weekly
+  // Close passes 'weekly_close' so the same single write path tags where a mood came from — never a
+  // parallel write route. Validated against the closed MOOD_SOURCES list.
+  let source: MoodSource = 'manual';
+  if (hasOwn(body, 'source') && body.source !== null && body.source !== undefined) {
+    if (typeof body.source !== 'string' || !MOOD_SOURCES.includes(body.source as MoodSource)) {
+      fields.source = 'invalid';
+    } else {
+      source = body.source as MoodSource;
+    }
+  }
+
   if (Object.keys(fields).length > 0) {
     res.status(422).json({ error: 'validation', fields });
     return;
   }
 
-  const { id: eventId } = await recordMood(userId, id, value, { note, source: 'manual' });
+  const { id: eventId } = await recordMood(userId, id, value, { note, source });
 
   const created = await moodListSelect(db).where('id', eventId).first();
   res.status(201).json(created);

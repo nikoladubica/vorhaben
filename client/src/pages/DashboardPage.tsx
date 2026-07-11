@@ -22,7 +22,7 @@ import { TrendChart } from '../components/dashboard/TrendChart';
 import { CompositionBar } from '../components/dashboard/CompositionBar';
 import { Timeline } from '../components/dashboard/Timeline';
 import { MissingRatesNotice } from '../components/dashboard/MissingRatesNotice';
-import { MoodNudge } from '../components/mood/MoodNudge';
+import { WeeklyRitual } from '../components/close/WeeklyRitual';
 import { SignalsPanel } from '../components/dashboard/SignalsPanel';
 
 // The trend/timeline/composition window options (months). The server clamps 1–36; the UI offers
@@ -172,7 +172,7 @@ export function DashboardPage() {
     return (
       <div>
         {header}
-        <MoodNudge />
+        <WeeklyRitual />
         <div className="panel">
           <div className="table-empty">
             <p>
@@ -194,7 +194,7 @@ export function DashboardPage() {
     <div className={loading ? 'dash-loading' : undefined}>
       {header}
 
-      <MoodNudge />
+      <WeeklyRitual />
 
       <MissingRatesNotice currencies={warnings.missing_rates} />
 
