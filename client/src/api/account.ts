@@ -18,6 +18,9 @@ export interface AssistantUsage {
   warning: boolean;
   capped: boolean;
   resetsAt: string;
+  // Invoice-scan fair-use counter (ticket 14). Scan COUNTS are user-facing — the no-raw-numbers rule
+  // is tokens-only. Null when the user is BYOK (uncapped).
+  scans: { used: number; cap: number; resetsAt: string } | null;
 }
 
 // GET /api/account/usage — the current billing window's assistant usage state.

@@ -31,7 +31,10 @@ export const env = {
   // Required secret for signing JWTs. In production there is NO fallback — the
   // process must fail fast if it is missing. In dev/self-host a stable fallback
   // keeps local setup frictionless.
-  jwtSecret: required('JWT_SECRET', nodeEnv === 'production' ? undefined : 'dev-insecure-jwt-secret-change-me'),
+  jwtSecret: required(
+    'JWT_SECRET',
+    nodeEnv === 'production' ? undefined : 'dev-insecure-jwt-secret-change-me',
+  ),
   // Secret used to encrypt at-rest secrets (currently a self-hoster's bring-your-own assistant API
   // key — ticket 13). OPTIONAL: when unset we derive from jwtSecret so encryption works out of the
   // box for local/self-host, but operators can rotate it independently. Rotating it (or jwtSecret,
@@ -58,6 +61,12 @@ export const env = {
     reserveTokens: Number(process.env.LLM_RESERVE_TOKENS ?? 300_000),
     chatModel: process.env.CHAT_LLM_MODEL ?? 'claude-haiku-4-5',
     digestModel: process.env.DIGEST_LLM_MODEL ?? 'claude-haiku-4-5',
+    // Invoice scanner (ticket 14; marketing-strategy §3.6) — the ONE Max-tier feature. It runs on
+    // Sonnet, not Haiku (extraction quality justifies the cost), and is metered BY SCAN COUNT rather
+    // than tokens: one llm_usage row per scan, a monthly count cap the user actually sees. Both
+    // env-overridable so nothing is hardcoded at the call site.
+    invoiceScanModel: process.env.INVOICE_SCAN_MODEL ?? 'claude-sonnet-5',
+    invoiceScanMonthlyCap: Number(process.env.INVOICE_SCAN_MONTHLY_CAP ?? 100),
   },
   db: {
     host: required('DB_HOST', 'localhost'),

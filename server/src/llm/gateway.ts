@@ -24,8 +24,11 @@ import { decryptSecret } from '../crypto/secretBox.js';
 // The metered pipelines. Kept as data (mirrors the llm_usage.feature closed list) so adding a
 // feature is additive. `voice_parse` and `digest` are PIPELINE features (may draw on the reserve);
 // `chat` is interactive (pauses at the general cap).
-export type LlmFeature = 'voice_parse' | 'chat' | 'digest';
+export type LlmFeature = 'voice_parse' | 'chat' | 'digest' | 'invoice_scan';
 
+// PIPELINE features may draw on the reserve after the general budget is spent. `invoice_scan` is
+// deliberately NOT one: it is a user-initiated, Max-tier action, so it pauses at the general cap
+// like chat rather than eating into the voice/digest reserve.
 const PIPELINE_FEATURES: ReadonlySet<LlmFeature> = new Set(['voice_parse', 'digest']);
 
 // Thrown when a metered user is over budget. Carries the billing-window reset instant (ISO 8601) so
@@ -54,6 +57,8 @@ function modelForFeature(feature: LlmFeature): string {
       return env.llm.chatModel;
     case 'digest':
       return env.llm.digestModel;
+    case 'invoice_scan':
+      return env.llm.invoiceScanModel;
   }
 }
 
@@ -112,6 +117,35 @@ export async function getUsageState(userId: number, now: Date = new Date()): Pro
   };
 }
 
+// The invoice scanner (ticket 14) is metered BY COUNT, not tokens: one llm_usage row per scan
+// (feature = 'invoice_scan'), and the fair-use cap is a monthly COUNT(*) the user actually sees
+// ("14 of 100 scans this month"). Unlike token totals, scan counts ARE user-facing — the no-raw-
+// numbers rule covers tokens only. BYOK scans write no row, so they never count here. Returns the
+// count, the configured cap, and the same billing-window reset instant the token meter uses.
+export interface InvoiceScanUsage {
+  used: number;
+  cap: number;
+  resetsAt: string;
+}
+
+export async function getInvoiceScanUsage(
+  userId: number,
+  now: Date = new Date(),
+): Promise<InvoiceScanUsage> {
+  const { start, resetsAt } = billingWindow(now);
+  const row = (await db('llm_usage')
+    .where('user_id', userId)
+    .andWhere('feature', 'invoice_scan')
+    .andWhere('created_at', '>=', start)
+    .count({ used: '*' })
+    .first()) as { used: number | string } | undefined;
+  return {
+    used: Number(row?.used ?? 0),
+    cap: env.llm.invoiceScanMonthlyCap,
+    resetsAt,
+  };
+}
+
 // Record one call's usage. Best-effort: any failure here is logged and swallowed so a metering
 // hiccup never turns a successful LLM call into a failed user request.
 async function recordUsage(
@@ -138,10 +172,9 @@ async function recordUsage(
 // A user's stored bring-your-own key (ticket 13), decrypted. Returns undefined when none is set or
 // the stored envelope no longer decrypts (e.g. the instance secret was rotated) — the caller then
 // falls back to the platform key and metering, exactly as if no BYOK key existed.
-async function resolveStoredByokKey(userId: number): Promise<string | undefined> {
-  const row = (await db('users')
-    .where({ id: userId })
-    .first('assistant_api_key_encrypted')) as { assistant_api_key_encrypted: string | null } | undefined;
+export async function resolveStoredByokKey(userId: number): Promise<string | undefined> {
+  const row = (await db('users').where({ id: userId }).first('assistant_api_key_encrypted')) as
+    { assistant_api_key_encrypted: string | null } | undefined;
   const stored = row?.assistant_api_key_encrypted;
   if (!stored) return undefined;
   return decryptSecret(stored) ?? undefined;

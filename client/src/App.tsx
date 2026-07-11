@@ -19,6 +19,7 @@ import { IncomePage } from './pages/IncomePage';
 import { Canvas } from './pages/Canvas';
 import { MatrixPage } from './pages/MatrixPage';
 import { Capture } from './pages/Capture';
+import { ScanInvoicePage } from './pages/ScanInvoicePage';
 import { TryCanvasPage } from './pages/TryCanvasPage';
 import './App.css';
 
@@ -101,6 +102,7 @@ function App() {
       >
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/new" element={<ProjectFormPage />} />
+        <Route path="/projects/scan" element={<ScanInvoicePage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/edit" element={<ProjectFormPage />} />
         <Route path="/notes" element={<NotesPage />} />

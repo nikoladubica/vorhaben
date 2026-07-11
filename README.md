@@ -87,6 +87,8 @@ env-overridable so nothing is hardcoded at the call sites:
 | `LLM_RESERVE_TOKENS` | `300000` | Extra pipeline-only reserve above the cap — voice capture and digests keep running from it after chat pauses. |
 | `CHAT_LLM_MODEL` | `claude-haiku-4-5` | Model for the (future) chat feature. |
 | `DIGEST_LLM_MODEL` | `claude-haiku-4-5` | Model for the (future) email digest feature. |
+| `INVOICE_SCAN_MODEL` | `claude-sonnet-5` | Model for the Max-tier invoice scanner. It runs on Sonnet (extraction quality) rather than Haiku. |
+| `INVOICE_SCAN_MONTHLY_CAP` | `100` | Scans per user per calendar month on the platform key. Metered by scan count, not tokens; BYOK is uncapped. |
 
 ## Development
 

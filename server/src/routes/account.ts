@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { getUsageState } from '../llm/gateway.js';
+import { getUsageState, getInvoiceScanUsage, resolveStoredByokKey } from '../llm/gateway.js';
 
 // Mounted at /api/account behind requireAuth (see app.ts). Owns the current user's own-account
 // settings; the id always comes from the auth token (req.userId), never the request body.
@@ -63,5 +63,12 @@ accountRouter.patch('/', async (req, res) => {
 accountRouter.get('/usage', async (req, res) => {
   const userId = req.userId as number;
   const state = await getUsageState(userId);
-  res.json(state);
+
+  // Invoice-scan fair-use counter (ticket 14, step 5). Scan COUNTS are user-facing — unlike raw
+  // tokens, "14 of 100 scans this month" is a unit users understand — so the no-raw-numbers rule
+  // (tokens only) does not apply here. BYOK users are uncapped, so their counter is null.
+  const hasByok = Boolean(await resolveStoredByokKey(userId));
+  const scans = hasByok ? null : await getInvoiceScanUsage(userId);
+
+  res.json({ ...state, scans });
 });

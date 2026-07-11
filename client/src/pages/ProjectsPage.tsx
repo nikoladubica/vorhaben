@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import type { ProjectType, ProjectWithMetrics } from '../types';
 import type { TimelineProject } from '../api/dashboard';
 import { listProjectTypes, listProjects, restoreProject, updateProject } from '../api/projects';
+import { getInvoiceCapabilities } from '../api/invoices';
 import { ProjectFilters } from '../components/projects/ProjectFilters';
 import { StatusBadge } from '../components/projects/StatusBadge';
 import { Timeline } from '../components/dashboard/Timeline';
@@ -76,6 +77,10 @@ export function ProjectsPage() {
   const [types, setTypes] = useState<ProjectType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // The invoice scanner (ticket 14) is a hosted/BYOK feature: show its entry point only when the
+  // feature is offerable (a platform key or the user's own BYOK key). Self-host without a key → the
+  // action never appears. The locked/upgrade state lives on the scanner page itself.
+  const [scanAvailable, setScanAvailable] = useState(false);
 
   // Take the trashed hand-off once, then strip it from history so a reload won't re-show it.
   const [trashed, setTrashed] = useState<Trashed | null>(() => {
@@ -120,6 +125,12 @@ export function ProjectsPage() {
     listProjectTypes()
       .then(setTypes)
       .catch(() => setTypes([]));
+  }, []);
+
+  useEffect(() => {
+    getInvoiceCapabilities()
+      .then((c) => setScanAvailable(c.available))
+      .catch(() => setScanAvailable(false));
   }, []);
 
   const typeLabels = useMemo(() => {
@@ -203,13 +214,8 @@ export function ProjectsPage() {
   // active, ended projects live ONLY there — filtered out of the main table below so each appears
   // once. A status filter (e.g. "ended") shows the table as the user asked and hides the panel.
   const statusFiltered = Boolean(filters.status);
-  const endedProjects = useMemo(
-    () => projects.filter((p) => p.status === 'ended'),
-    [projects],
-  );
-  const tableProjects = statusFiltered
-    ? projects
-    : projects.filter((p) => p.status !== 'ended');
+  const endedProjects = useMemo(() => projects.filter((p) => p.status === 'ended'), [projects]);
+  const tableProjects = statusFiltered ? projects : projects.filter((p) => p.status !== 'ended');
   const showGraveyard = !statusFiltered && endedProjects.length > 0;
 
   return (
@@ -217,6 +223,11 @@ export function ProjectsPage() {
       <div className="dash-head">
         <h3>Projects</h3>
         <div className="pd-actions">
+          {scanAvailable && (
+            <Link className="btn ghost sm" to="/projects/scan">
+              Scan invoice
+            </Link>
+          )}
           <Link className="btn primary sm" to="/projects/new">
             New project
           </Link>

@@ -25,6 +25,7 @@ import { settingsRouter } from './routes/settings.js';
 import { tagsRouter } from './routes/tags.js';
 import { exportRouter, importRouter } from './routes/exportImport.js';
 import { voiceRouter } from './routes/voice.js';
+import { invoicesRouter } from './routes/invoices.js';
 import { checklistsRouter, checklistItemsRouter } from './routes/checklists.js';
 import { remindersRouter } from './routes/reminders.js';
 import { eventsRouter } from './routes/events.js';
@@ -95,6 +96,11 @@ app.use('/api/tags', requireAuth, tagsRouter);
 // be filed against a project or left unassigned. checklist-items has its own flat mount for the
 // check/uncheck endpoint, mirroring the notes/single-note router split.
 app.use('/api/voice', requireAuth, voiceRouter);
+// Invoice scanner (ticket 14, Max tier). /scan takes a raw file upload (its own express.raw parser
+// with a 10 MB ceiling lives on the route); /capabilities gates the feature client-side. Entitlement
+// (Max plan or BYOK parity) and the monthly scan-count cap are enforced in the route; the one LLM
+// call routes through the ticket-12 gateway. Stateless apart from the gateway's metering row.
+app.use('/api/invoices', requireAuth, invoicesRouter);
 app.use('/api/checklists', requireAuth, checklistsRouter);
 app.use('/api/checklist-items', requireAuth, checklistItemsRouter);
 app.use('/api/reminders', requireAuth, remindersRouter);

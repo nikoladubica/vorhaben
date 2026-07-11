@@ -1,0 +1,110 @@
+/* Invoice scanner (ticket 14). Swiss: hairline borders, square corners, one red (the primary
+   action), no shadows. Reuses the shared .panel / .btn / .form-error classes; only the scanner-
+   specific layout lives here. */
+
+.scan-intro {
+  color: var(--ink-2);
+  max-width: 60ch;
+  margin: 4px 0 16px;
+  line-height: 1.5;
+}
+
+.scan-drop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scan-hint {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+/* Locked (available, not Max) — one calm upgrade line, never a hidden feature. */
+.scan-locked .panel-b {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.scan-lock-line {
+  color: var(--ink-2);
+  max-width: 60ch;
+  line-height: 1.5;
+}
+
+/* Review card */
+.scan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.scan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 16px;
+}
+
+.scan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scan-field-wide {
+  grid-column: 1 / -1;
+}
+
+.scan-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-3);
+}
+
+.scan-input {
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+  width: 100%;
+}
+
+.scan-input:focus {
+  outline: none;
+  border-color: var(--ink-2);
+}
+
+.scan-dest {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 16px;
+}
+
+.scan-dest-toggle {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  color: var(--ink-2);
+}
+
+.scan-dest-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.scan-actions {
+  display: flex;
+  gap: 12px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 16px;
+}
