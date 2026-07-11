@@ -14,6 +14,8 @@ import { getDashboard, getSuggestions } from '../api/dashboard';
 import type { Nudge, Signal } from '../api/signals';
 import { getSignals } from '../api/signals';
 import { listProjectTypes } from '../api/projects';
+import type { StatementPeriod } from '../api/statement';
+import { getStatementPeriods } from '../api/statement';
 import type { ProjectType } from '../types';
 import { KpiRow } from '../components/dashboard/KpiRow';
 import { RankingPanel } from '../components/dashboard/RankingPanel';
@@ -48,6 +50,8 @@ export function DashboardPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [nudges, setNudges] = useState<Nudge[]>([]);
   const [types, setTypes] = useState<ProjectType[]>([]);
+  // The newest fully-elapsed quarter, if one has a statement — drives the discreet "ready" line.
+  const [readyStatement, setReadyStatement] = useState<StatementPeriod | null>(null);
 
   // Re-fetch the dashboard whenever the window changes. Keep the previous payload on screen while
   // refetching so switching windows doesn't blank the page.
@@ -94,6 +98,14 @@ export function DashboardPage() {
     listProjectTypes()
       .then(setTypes)
       .catch(() => setTypes([]));
+  }, []);
+
+  useEffect(() => {
+    // Optional garnish (periods come newest-first): surface only the most recent finished quarter,
+    // and only when one exists. A failure simply shows no line.
+    getStatementPeriods()
+      .then((res) => setReadyStatement(res.periods.find((p) => p.finished) ?? null))
+      .catch(() => setReadyStatement(null));
   }, []);
 
   const typeLabels = useMemo(() => {
@@ -200,6 +212,13 @@ export function DashboardPage() {
   return (
     <div className={loading ? 'dash-loading' : undefined}>
       {header}
+
+      {readyStatement && (
+        <p className="stmt-ready">
+          Your {readyStatement.label} statement is ready.{' '}
+          <Link to={`/statement/${readyStatement.period}`}>View statement →</Link>
+        </p>
+      )}
 
       <WeeklyRitual />
 

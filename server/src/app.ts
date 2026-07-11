@@ -19,6 +19,7 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { signalsRouter } from './routes/signals.js';
 import { matrixRouter } from './routes/matrix.js';
 import { closesRouter } from './routes/closes.js';
+import { statementsRouter } from './routes/statements.js';
 import { accountRouter } from './routes/account.js';
 import { tagsRouter } from './routes/tags.js';
 import { exportRouter, importRouter } from './routes/exportImport.js';
@@ -79,6 +80,10 @@ app.use('/api/matrix', requireAuth, matrixRouter);
 // an idempotent completion; /settings persists the close-day preference. Every query is user-scoped
 // and soft-delete aware.
 app.use('/api/closes', requireAuth, closesRouter);
+// Quarterly Statement (breaktrough.md §2.8). Computed on demand, never stored: /:period returns the
+// full quarter model (portfolio + narrative + one recommendation), / lists the periods with data.
+// Every query is user-scoped and soft-delete aware; all money is converted server-side.
+app.use('/api/statements', requireAuth, statementsRouter);
 app.use('/api/account', requireAuth, accountRouter);
 app.use('/api/tags', requireAuth, tagsRouter);
 // Voice capture (§ voice-capture). Transcript parsing (side-effect free) + capability probe, then

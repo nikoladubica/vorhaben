@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ClosePage } from './pages/ClosePage';
+import { StatementPage } from './pages/StatementPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectFormPage } from './pages/ProjectFormPage';
@@ -70,6 +71,18 @@ function App() {
         element={
           <RequireAuth>
             <EndingRitualPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* The Quarterly Statement (ticket 07 / §2.8). Its own print-quality surface — authenticated but
+          outside AppLayout, so it carries its own chrome (which vanishes under @media print) and the
+          page prints as a clean A4, like the Weekly Close and the ending ritual sit apart. */}
+      <Route
+        path="/statement/:period"
+        element={
+          <RequireAuth>
+            <StatementPage />
           </RequireAuth>
         }
       />

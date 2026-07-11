@@ -149,6 +149,23 @@ nav.main .soon {
   font-weight: 600;
 }
 
+/* Quarterly Statement ready-line (ticket 07) — one discreet, achromatic line between the dashboard
+   head and the KPI row when the newest finished quarter has a statement. No badge, no red. */
+.stmt-ready {
+  margin: 0 0 20px;
+  padding-top: 4px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.stmt-ready a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.stmt-ready a:hover {
+  color: var(--ink-2);
+}
+
 /* page heads (placeholder pages reuse the dashboard head) */
 .dash-head {
   display: flex;

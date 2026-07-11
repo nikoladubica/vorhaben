@@ -1,0 +1,342 @@
+/* Quarterly Statement (ticket 07 / breaktrough.md §2.8). One ~820px column set like a private-bank
+   statement. Red is spent exactly twice — the head wordmark square and the recommendation's focus
+   rule; everything else is achromatic so the page survives a black-and-white print. The @media print
+   block at the bottom turns the same DOM into a clean A4 (no chrome) — that IS the v1 "PDF export".
+   Tokens only; no new colours, fonts, or radii. */
+
+.stmt-root {
+  min-height: 100vh;
+  background: var(--surface);
+}
+
+/* the centred content column, shared by the actions row and the printable page */
+.stmt-shell {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 28px 64px;
+}
+
+/* ————— screen-only chrome ————— */
+.stmt-actions {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 28px 20px;
+}
+.stmt-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stmt-picker-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.stmt-select {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.stmt-select:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 1px;
+}
+
+/* ————— statement head ————— */
+.stmt-head {
+  border-bottom: 1px solid var(--hairline);
+  padding: 8px 0 24px;
+}
+.stmt-wordmark {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.stmt-wordmark .sq {
+  width: 12px;
+  height: 12px;
+}
+.stmt-doctitle {
+  margin-top: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+}
+.stmt-period {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 8px;
+}
+.stmt-period-label {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.stmt-period-range {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.stmt-meta {
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+/* ————— section labels ————— */
+.stmt-seclabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-3);
+}
+
+.stmt-portfolio {
+  padding: 28px 0;
+}
+.stmt-portfolio .kpis {
+  margin-top: 14px;
+  margin-bottom: 24px;
+}
+/* the name-based KPIs (best rate / heaviest) sit at 20px, not the numeric 28px */
+.stmt-kpi-name {
+  font-size: 20px;
+  padding-top: 4px;
+}
+
+/* ————— portfolio table (extends the shared table.projects) ————— */
+.stmt-table {
+  font-size: 12.5px;
+}
+.stmt-table.projects {
+  min-width: 680px;
+}
+.stmt-proj {
+  display: block;
+  font-weight: 500;
+}
+.stmt-proj small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.stmt-status {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.stmt-verdict {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.stmt-verdict small {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+.stmt-spark {
+  display: block;
+}
+/* a negative net keeps its leading minus but is only de-emphasised — never red */
+.stmt-table td.stmt-neg {
+  color: var(--ink-2);
+}
+
+/* ————— narrative ————— */
+.stmt-narrative {
+  padding: 4px 0 28px;
+  border-top: 1px solid var(--hairline);
+}
+.stmt-narrative .stmt-seclabel {
+  padding-top: 24px;
+}
+.stmt-lede {
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  max-width: 58ch;
+}
+
+.stmt-ended {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.stmt-ended-item {
+  break-inside: avoid;
+}
+.stmt-ended-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.stmt-lifespan {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.stmt-ended-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 58ch;
+}
+
+.stmt-warn {
+  margin: 24px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.stmt-weeks {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.stmt-quotes {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.stmt-quote {
+  margin: 0;
+  padding-left: 16px;
+  border-left: 2px solid var(--hairline);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  break-inside: avoid;
+}
+.stmt-quote-cite {
+  display: block;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+/* ————— recommendation: the second (and last) red on the page ————— */
+.stmt-reco {
+  margin-top: 8px;
+  border-top: 2px solid var(--red);
+  background: var(--paper);
+  padding: 24px 26px 28px;
+  break-inside: avoid;
+}
+.stmt-reco-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--red);
+}
+.stmt-reco-sentence {
+  margin: 10px 0 0;
+  font-size: 21px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  max-width: 52ch;
+}
+
+/* ————— footer ————— */
+.stmt-foot {
+  margin-top: 28px;
+  border-top: 1px solid var(--hairline);
+  padding: 20px 0 8px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+/* ————————————————————————————— print ————————————————————————————— */
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+
+  .stmt-chrome,
+  .topbar,
+  nav.main,
+  .me,
+  .stmt-actions {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+  .stmt-root {
+    background: #fff;
+  }
+  .stmt-shell {
+    max-width: none;
+    padding: 0;
+  }
+  .stmt-page,
+  .mock {
+    border: 0;
+    max-width: none;
+  }
+
+  /* the portfolio and the narrative each get their own page */
+  .stmt-narrative {
+    break-before: page;
+  }
+
+  table.projects tr,
+  .stmt-ended-item,
+  .stmt-quote,
+  .stmt-reco {
+    break-inside: avoid;
+  }
+  table.projects thead {
+    display: table-header-group;
+  }
+
+  /* lift the greys so the page holds its structure in black and white */
+  table.projects th {
+    border-bottom-color: var(--ink-3);
+  }
+  table.projects td {
+    border-bottom-color: var(--hairline);
+  }
+  .stmt-head,
+  .stmt-foot,
+  .stmt-reco {
+    border-color: var(--ink-3);
+  }
+
+  /* keep the two intentional colour marks; flatten the tinted panels to white */
+  .wordmark .sq,
+  .stmt-reco {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .stmt-reco {
+    background: #fff;
+  }
+  .kpi {
+    background: #fff;
+  }
+}

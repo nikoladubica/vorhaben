@@ -37,6 +37,17 @@ const VALENCE: Record<Feeling, number> = {
   miserable: -2,
 };
 
+/**
+ * The internal valence score (−2…+2) for a feeling — the good↔bad axis that drives direction,
+ * streaks, swings and trend_score. Exposed for the Quarterly Statement's mood TRAJECTORY line
+ * (ticket 07): a sparkline is a shape, not a user-visible number (same rationale trend_score
+ * already travels in the matrix/signals APIs). Keeping the map's single source of truth here means
+ * the statement never re-derives the mapping. `null` in ⇒ `null` out (a cleared feeling is a gap).
+ */
+export function valenceOf(feeling: Feeling | null): number | null {
+  return feeling === null ? null : VALENCE[feeling];
+}
+
 // Energy: fire at full burn (+2) ↔ drained (−2). Drives the burnout axis (strain vs. burnout).
 // The whole point of this axis: stressed (−1, +1) is negative but STILL burning; sad (−2, −1) is
 // the fire dimming. A stressed→sad slide barely moves valence but crosses energy from + to − —
