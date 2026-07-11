@@ -2491,3 +2491,158 @@ input[type='range'].sld:focus-visible {
     min-height: 220px;
   }
 }
+
+/* ————— pricing page (design screen 08), extended to three plans —————
+   Ported from the design file's .price-* family. The hosted highlight is the
+   paper-tinted background only; the page's single red element is the Pro
+   primary CTA (.btn.primary). The monthly/annual toggle uses the non-red
+   ink-selection idiom (cf. .qa-date.on) so red stays reserved for that CTA. */
+.price-page {
+  padding: 56px 0 72px;
+}
+.price-intro {
+  max-width: 560px;
+  margin-bottom: 26px;
+}
+.price-intro h3 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 10px 0 8px;
+  text-wrap: balance;
+}
+.price-intro p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+/* monthly / annual toggle — square segmented control, ink selection (no red) */
+.price-toggle {
+  display: inline-flex;
+  margin: 0 0 28px;
+}
+.price-toggle button {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 18px;
+  cursor: pointer;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  margin-left: -1px;
+}
+.price-toggle button:first-child {
+  margin-left: 0;
+}
+.price-toggle button:hover {
+  color: var(--ink);
+}
+.price-toggle button[aria-pressed='true'] {
+  position: relative;
+  z-index: 1;
+  border-color: var(--ink);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--hairline);
+}
+.price-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.price-col {
+  display: flex;
+  flex-direction: column;
+  padding: 32px 34px 30px;
+}
+.price-col + .price-col {
+  border-left: 1px solid var(--hairline);
+}
+.price-col.hosted {
+  background: var(--paper);
+}
+.price-col .p-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.price-col .p-amt {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 12px 0 2px;
+}
+.price-col .p-amt small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-3);
+  letter-spacing: 0;
+}
+.price-col .p-save {
+  min-height: 18px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.price-col .p-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0 0 20px;
+}
+.p-feats {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+}
+.p-feats li {
+  position: relative;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  padding: 9px 0 9px 22px;
+  border-top: 1px solid var(--grid);
+}
+.p-feats li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 15px;
+  width: 8px;
+  height: 5px;
+  border: solid var(--ink-3);
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg);
+}
+.p-feats li b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.price-col .btn {
+  margin-top: auto;
+  width: 100%;
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .price-page {
+    padding: 36px 0 52px;
+  }
+  .price-grid,
+  .price-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .price-col + .price-col {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+}

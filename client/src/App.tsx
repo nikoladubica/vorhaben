@@ -21,6 +21,7 @@ import { MatrixPage } from './pages/MatrixPage';
 import { Capture } from './pages/Capture';
 import { ScanInvoicePage } from './pages/ScanInvoicePage';
 import { TryCanvasPage } from './pages/TryCanvasPage';
+import { PricingPage } from './pages/PricingPage';
 import './App.css';
 
 /** Root gate: visitors see the public landing page, signed-in users the app. */
@@ -42,6 +43,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/try-canvas" element={<TryCanvasPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
 
       {/* The Honesty Contract (ticket 03). Its own full-page surface — authenticated but outside
           AppLayout, so it never nests inside the app chrome or the onboarding gate. */}
