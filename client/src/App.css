@@ -1982,6 +1982,20 @@ a.tl-row:hover .tl-n {
   color: var(--red);
   border-bottom-color: var(--red);
 }
+/* concentration callout under the income breakdown (verbatim from the design file) */
+.comp-note {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  border-top: 1px solid var(--hairline);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.comp-note b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .warn-flag {
   display: inline-flex;
   align-items: center;

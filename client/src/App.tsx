@@ -15,6 +15,7 @@ import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { EndingRitualPage } from './pages/EndingRitualPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotesPage } from './pages/NotesPage';
+import { IncomePage } from './pages/IncomePage';
 import { Canvas } from './pages/Canvas';
 import { MatrixPage } from './pages/MatrixPage';
 import { Capture } from './pages/Capture';
@@ -103,6 +104,7 @@ function App() {
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/edit" element={<ProjectFormPage />} />
         <Route path="/notes" element={<NotesPage />} />
+        <Route path="/income" element={<IncomePage />} />
         <Route path="/canvas" element={<Canvas />} />
         <Route path="/matrix" element={<MatrixPage />} />
         <Route path="/capture" element={<Capture />} />

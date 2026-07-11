@@ -98,10 +98,9 @@ export function AppLayout() {
             <NavLink to="/capture" className={({ isActive }) => (isActive ? 'on' : undefined)}>
               Capture
             </NavLink>
-            {/* Income is owned by a later ticket; shown muted until routed. */}
-            <span className="soon" aria-disabled="true">
+            <NavLink to="/income" className={({ isActive }) => (isActive ? 'on' : undefined)}>
               Income
-            </span>
+            </NavLink>
             <NavLink to="/notes" className={({ isActive }) => (isActive ? 'on' : undefined)}>
               Notes
             </NavLink>
