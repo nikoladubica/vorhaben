@@ -42,3 +42,12 @@ export type Feeling = (typeof FEELINGS)[number];
 export const TRENDS = ['good', 'stable', 'bad'] as const;
 
 export type Trend = (typeof TRENDS)[number];
+
+// Canvas connection types. A project_links row is directed from ▸ to; the type labels the
+// relationship. `parent` = the `from` project is the parent, the `to` project is the child;
+// `blocks` = the `from` project blocks the `to` project. Validated in the app layer against this
+// list (plain string column, no DB enum). CLOSED list, order significant: do not add, rename, or
+// reorder.
+export const LINK_TYPES = ['parent', 'blocks'] as const;
+
+export type LinkType = (typeof LINK_TYPES)[number];

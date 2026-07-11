@@ -35,6 +35,14 @@ interface Props {
   // Callback ref to the card's root element, so the board can measure real rendered sizes for
   // collision (heights vary with content). Optional — hosts that don't need measuring omit it.
   rootRef?: (el: HTMLDivElement | null) => void;
+  // Pointer-down on the mid-right connect handle — starts a link drag in the board. When omitted
+  // (the public demo) the handle is not rendered, so the card behaves exactly as before.
+  onHandlePointerDown?: (e: PointerEvent<HTMLButtonElement>) => void;
+  // True while this card is the source of an in-progress link drag (keeps the handle visible even
+  // after the pointer leaves the card).
+  linkSource?: boolean;
+  // True while a link drag is hovering this card as its would-be target (draws the connect outline).
+  linkTarget?: boolean;
 }
 
 // The normalized headline line — "CHF 2'480 monthly-eq · 62/h", with an em dash for any figure the
@@ -62,6 +70,9 @@ export function CanvasCard({
   onDropMarkdown,
   onPointerDown,
   rootRef,
+  onHandlePointerDown,
+  linkSource = false,
+  linkTarget = false,
 }: Props) {
   // A file is hovering over the card — draws the --ink border (matches the .drag treatment; never red).
   const [over, setOver] = useState(false);
@@ -88,13 +99,25 @@ export function CanvasCard({
   return (
     <div
       ref={rootRef}
-      className={`cv-card${dragging ? ' drag' : ''}${over ? ' over' : ''}`}
+      className={`cv-card${dragging ? ' drag' : ''}${over ? ' over' : ''}${
+        linkSource ? ' link-source' : ''
+      }${linkTarget ? ' link-target' : ''}`}
       style={style}
       onPointerDown={onPointerDown}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
+      {onHandlePointerDown && (
+        <button
+          type="button"
+          className="cv-handle"
+          aria-label={`Connect ${item.name} to another project`}
+          title="Drag onto another project to connect them"
+          onPointerDown={onHandlePointerDown}
+        />
+      )}
+
       <div className="hd">
         <button
           type="button"

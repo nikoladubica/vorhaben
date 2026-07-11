@@ -29,6 +29,22 @@ export type Feeling =
 // The 3 canvas trends — how the work is GOING. Semantic (good/stable/bad), never the red accent.
 export type Trend = 'good' | 'stable' | 'bad';
 
+// The canvas connection types — a closed list; keep in sync with server LINK_TYPES. A link is a real
+// project relationship (screen 14), edited on the canvas but readable beyond it. `parent`: the `from`
+// project is the parent, the `to` project is the part/child. `blocks`: the `from` project is blocking
+// the `to` project from progressing. Both draw from ▸ to; no red anywhere (see design.md).
+export type LinkType = 'parent' | 'blocks';
+
+// A typed connection between two of the user's projects, from GET /api/canvas (`links`). Ids are the
+// project ids the link joins; the canvas only draws a link when BOTH endpoints are currently placed,
+// but the row survives a card's removal from the board — it is a project relationship, not decoration.
+export interface ProjectLink {
+  id: number;
+  from_project_id: number;
+  to_project_id: number;
+  type: LinkType;
+}
+
 // A project as returned by GET /api/projects and /api/projects/:id. Dates arrive as
 // YYYY-MM-DD strings; rate_amount is a decimal string (or null) — amounts stay strings
 // end to end (ticket 04 convention).
@@ -245,8 +261,10 @@ export interface CanvasItem {
   y?: number;
 }
 
-// The full canvas payload from GET /api/canvas — cards already on the board vs. still in the tray.
+// The full canvas payload from GET /api/canvas — cards already on the board vs. still in the tray,
+// plus every live project-to-project link (drawn only when both endpoints are placed, § canvas).
 export interface CanvasBoard {
   placed: CanvasItem[];
   tray: CanvasItem[];
+  links: ProjectLink[];
 }
