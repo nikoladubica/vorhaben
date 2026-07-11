@@ -28,7 +28,20 @@ export interface Signal {
   sentence: string;
 }
 
-// GET /api/signals — the caller's per-project signals, most-concerning first (empty when quiet).
-export function getSignals(): Promise<{ signals: Signal[] }> {
-  return api.get<{ signals: Signal[] }>('/signals');
+// A drift nudge (breaktrough.md §2.7): at most one per project per week, server-budgeted. Like a
+// Signal it is sentence-first (the words ARE the interface), but it prompts a decision rather than
+// reporting a read. `feeling_drift` = an established decline; `attention_drift` = an untouched active
+// project offered a guilt-free ending. Rendered inside the Signals panel — never red, no badge, no
+// count. Only `attention_drift` surfaces the direct "End it →" path.
+export interface Nudge {
+  project_id: number;
+  name: string;
+  kind: 'feeling_drift' | 'attention_drift';
+  sentence: string;
+}
+
+// GET /api/signals — the caller's per-project signals (most-concerning first) plus drift nudges.
+// Both arrays are empty when the engine is quiet.
+export function getSignals(): Promise<{ signals: Signal[]; nudges: Nudge[] }> {
+  return api.get<{ signals: Signal[]; nudges: Nudge[] }>('/signals');
 }

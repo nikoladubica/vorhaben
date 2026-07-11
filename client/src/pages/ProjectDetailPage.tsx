@@ -98,7 +98,6 @@ export function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [confirmEnd, setConfirmEnd] = useState(false);
   // Bumped when the time-log panel creates an income entry, so the income panel reloads (its
   // reload calls onChanged, which refreshes the header metrics in turn).
   const [entriesReload, setEntriesReload] = useState(0);
@@ -270,28 +269,11 @@ export function ProjectDetailPage() {
           >
             {toggleLabel}
           </button>
-          {confirmEnd ? (
-            <span className="pd-confirm">
-              <span>End this project?</span>
-              <button
-                type="button"
-                className="btn ghost sm danger"
-                onClick={() => {
-                  void applyStatus({ end_date: todayString() });
-                  setConfirmEnd(false);
-                }}
-              >
-                End project
-              </button>
-              <button type="button" className="btn ghost sm" onClick={() => setConfirmEnd(false)}>
-                Cancel
-              </button>
-            </span>
-          ) : (
-            <button type="button" className="btn ghost sm" onClick={() => setConfirmEnd(true)}>
-              End project
-            </button>
-          )}
+          {/* The ending ritual (§2.7): a first-class closing screen, not a confirm dialog. It runs
+              the same status write path (PATCH end_date = today) via updateProject, never a fork. */}
+          <Link className="btn ghost sm" to={`/projects/${project.id}/end`}>
+            End project
+          </Link>
         </div>
       </div>
 

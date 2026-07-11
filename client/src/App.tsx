@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectFormPage } from './pages/ProjectFormPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
+import { EndingRitualPage } from './pages/EndingRitualPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotesPage } from './pages/NotesPage';
 import { Canvas } from './pages/Canvas';
@@ -57,6 +58,18 @@ function App() {
         element={
           <RequireAuth>
             <ClosePage />
+          </RequireAuth>
+        }
+      />
+
+      {/* The ending ritual (ticket 06 / §2.7). Its own full-page statement surface — authenticated
+          but outside AppLayout, so the closing screen is set apart from the app chrome, like the
+          Weekly Close and the Honesty Contract. */}
+      <Route
+        path="/projects/:id/end"
+        element={
+          <RequireAuth>
+            <EndingRitualPage />
           </RequireAuth>
         }
       />

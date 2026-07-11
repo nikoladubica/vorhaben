@@ -1745,6 +1745,117 @@ a.rank-row:hover .n {
   outline-offset: 2px;
 }
 
+/* drift nudges (§2.7) share the signal list but stack a quiet "End it →" path (attention drift
+   only) under the sentence. Never red, no badge, no count. The `divide` rule marks the boundary
+   between nudges (which prompt a decision) and the plain signal reads below. */
+.nudge-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.nudge-end {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-decoration: none;
+}
+.nudge-end:hover,
+.nudge-end:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.nudge-end:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.signal-row.divide {
+  border-top: 1px solid var(--hairline);
+  margin-top: 4px;
+  padding-top: 15px;
+}
+
+/* the Ended panel (graveyard, §2.7): an archive of finished undertakings, not a trash can. A quiet
+   row per project — lifespan + lifetime figures, an optional quoted teach-note, and a plain-text
+   Reactivate control. Nothing here is red. */
+.graveyard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.graveyard-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.graveyard-row:first-child {
+  padding-top: 4px;
+}
+.graveyard-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+.graveyard-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.graveyard-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.graveyard-span {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.graveyard-fig {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.graveyard-fig-k {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.graveyard-reactivate {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.graveyard-reactivate:hover {
+  color: var(--ink);
+}
+.graveyard-reactivate:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.graveyard-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+
 /* chart tooltip (verbatim from the design file's #tip) */
 .chart-tip {
   position: fixed;

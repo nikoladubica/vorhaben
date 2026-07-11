@@ -1,30 +1,35 @@
-// SIGNALS PANEL — the First Signal read (breaktrough.md §2.3–§2.4). Each entry is one plain,
-// render-ready sentence from the mood analysis engine; the words ARE the interface, so no numbers
-// and no charts appear here. The server omits silent projects and orders them most-concerning
-// first, so the array renders verbatim — no client-side sort or filter. Red stays reserved: a
-// down-signal is --ink text, never an alarm. At most three sentences show; the rest collapse behind
-// a "…and N more" toggle (state only, no navigation). Each row links to its project. An empty list
-// renders nothing at all — no header, no "all quiet" filler.
+// SIGNALS PANEL — the First Signal read (breaktrough.md §2.3–§2.4) plus drift nudges (§2.7). Each
+// entry is one plain, render-ready sentence; the words ARE the interface, so no numbers and no
+// charts appear here. The server omits silent projects and orders them most-concerning first, so
+// the arrays render verbatim — no client-side sort or filter. Red stays reserved: neither a
+// down-signal nor a nudge ever renders in red — they are --ink text, never an alarm.
+//
+// Nudges render first (they prompt a decision, not just a read), then the signal sentences with the
+// unchanged preview/expand behaviour. An `attention_drift` nudge also offers a direct "End it →"
+// path into the ending ritual; `feeling_drift` links only to the project. An empty panel (no
+// nudges, no signals) renders nothing at all — no header, no "all quiet" filler.
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Signal } from '../../api/signals';
+import type { Nudge, Signal } from '../../api/signals';
 
 interface SignalsPanelProps {
   signals: Signal[];
+  nudges: Nudge[];
 }
 
 // How many sentences show before the rest fold away — a quiet glance, not the full ledger.
 const PREVIEW_COUNT = 3;
 
-export function SignalsPanel({ signals }: SignalsPanelProps) {
+export function SignalsPanel({ signals, nudges }: SignalsPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
   // Empty state: the whole panel disappears (the caller mounts us unconditionally, so we guard).
-  if (signals.length === 0) return null;
+  if (signals.length === 0 && nudges.length === 0) return null;
 
   const hidden = signals.length - PREVIEW_COUNT;
   const shown = expanded ? signals : signals.slice(0, PREVIEW_COUNT);
+  const bothGroups = nudges.length > 0 && signals.length > 0;
 
   return (
     <div className="panel signals">
@@ -34,8 +39,23 @@ export function SignalsPanel({ signals }: SignalsPanelProps) {
       </div>
       <div className="panel-b">
         <ul className="signal-list">
-          {shown.map((s) => (
-            <li key={s.project_id} className="signal-row">
+          {nudges.map((n) => (
+            <li key={`nudge-${n.project_id}-${n.kind}`} className="signal-row nudge-row">
+              <Link className="signal-link" to={`/projects/${n.project_id}`}>
+                {n.sentence}
+              </Link>
+              {n.kind === 'attention_drift' && (
+                <Link className="nudge-end" to={`/projects/${n.project_id}/end`}>
+                  End it →
+                </Link>
+              )}
+            </li>
+          ))}
+          {shown.map((s, i) => (
+            <li
+              key={s.project_id}
+              className={`signal-row${i === 0 && bothGroups ? ' divide' : ''}`}
+            >
               <Link className="signal-link" to={`/projects/${s.project_id}`}>
                 {s.sentence}
               </Link>

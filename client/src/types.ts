@@ -52,6 +52,9 @@ export interface Project {
   // project's numbers.
   feeling: Feeling | null;
   trend: Trend | null;
+  // The optional "what did it teach you?" note filed during the ending ritual (§2.7). Null until a
+  // project is ended with a note; never couples to deleted_at, and survives reactivation.
+  ending_note: string | null;
 }
 
 // A project row as returned by the LIST endpoint (GET /api/projects), enriched with the same
@@ -85,6 +88,9 @@ export interface ProjectPayload {
   rate_amount: number | null;
   rate_currency: string | null;
   tags: string[];
+  // Set only by the ending ritual (§2.7). Omitted by every other write path, so it is optional and
+  // never clobbers an existing note on an unrelated PATCH.
+  ending_note?: string | null;
 }
 
 // An income entry from GET /api/projects/:id/entries (newest first). `date` is YYYY-MM-DD;

@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Dashboard, Suggestion } from '../api/dashboard';
 import { getDashboard, getSuggestions } from '../api/dashboard';
-import type { Signal } from '../api/signals';
+import type { Nudge, Signal } from '../api/signals';
 import { getSignals } from '../api/signals';
 import { listProjectTypes } from '../api/projects';
 import type { ProjectType } from '../types';
@@ -46,6 +46,7 @@ export function DashboardPage() {
   // Suggestions, signals and type labels load independently — none can break the dashboard.
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
+  const [nudges, setNudges] = useState<Nudge[]>([]);
   const [types, setTypes] = useState<ProjectType[]>([]);
 
   // Re-fetch the dashboard whenever the window changes. Keep the previous payload on screen while
@@ -79,8 +80,14 @@ export function DashboardPage() {
   useEffect(() => {
     // Same independent-fetch pattern: a failure here shows no Signals panel, never blocks the page.
     getSignals()
-      .then((res) => setSignals(res.signals))
-      .catch(() => setSignals([]));
+      .then((res) => {
+        setSignals(res.signals);
+        setNudges(res.nudges);
+      })
+      .catch(() => {
+        setSignals([]);
+        setNudges([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -238,7 +245,7 @@ export function DashboardPage() {
 
       <FocusCallout suggestions={suggestions} nameById={nameById} />
 
-      <SignalsPanel signals={signals} />
+      <SignalsPanel signals={signals} nudges={nudges} />
 
       <div className="cols">
         <div className="panel">

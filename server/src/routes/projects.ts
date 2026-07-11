@@ -37,6 +37,7 @@ interface ProjectRow {
   rate_currency: string | null;
   feeling: string | null;
   trend: string | null;
+  ending_note: string | null;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -78,6 +79,7 @@ function projectQuery(executor: Knex | Knex.Transaction) {
       'p.rate_currency',
       'p.feeling',
       'p.trend',
+      'p.ending_note',
       'p.created_at',
       'p.updated_at',
       'p.deleted_at',
@@ -125,6 +127,7 @@ interface ValidatedColumns {
   rate_currency?: string | null;
   feeling?: Feeling | null;
   trend?: Trend | null;
+  ending_note?: string | null;
 }
 
 interface ValidatedInput {
@@ -287,6 +290,19 @@ async function validateProjectInput(
       fields.trend = 'invalid';
     } else {
       columns.trend = raw as Trend;
+    }
+  }
+
+  // ending_note (the ending ritual's optional "what did it teach you?"; §2.7 step 2). Free text,
+  // like description; null/undefined clears it. Persisted on the same PATCH that sets the end date.
+  if (provided('ending_note')) {
+    const raw = body.ending_note;
+    if (raw === null || raw === undefined) {
+      columns.ending_note = null;
+    } else if (typeof raw !== 'string') {
+      fields.ending_note = 'invalid';
+    } else {
+      columns.ending_note = raw;
     }
   }
 
