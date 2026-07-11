@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
+import { getUsageState } from '../llm/gateway.js';
 
 // Mounted at /api/account behind requireAuth (see app.ts). Owns the current user's own-account
 // settings; the id always comes from the auth token (req.userId), never the request body.
@@ -50,4 +51,17 @@ accountRouter.patch('/', async (req, res) => {
   }
 
   res.json(publicUser(user));
+});
+
+// GET /api/account/usage — the hosted-assistant meter (ticket 12, marketing-strategy §3.5).
+// Returns the month-to-date state as a PERCENTAGE plus booleans and the reset instant — never a raw
+// token count. The response shape itself enforces the presentation rule: there is no field a token
+// number could hide in. `warning` at ≥80%, `capped` once the general budget is spent (chat pauses;
+// voice capture keeps working from the reserve, then the rules parser). The client gates the whole
+// meter on GET /api/voice/capabilities (llm boolean) so self-host instances with no platform key
+// show nothing; this endpoint still answers (percent 0) for a keyless instance.
+accountRouter.get('/usage', async (req, res) => {
+  const userId = req.userId as number;
+  const state = await getUsageState(userId);
+  res.json(state);
 });

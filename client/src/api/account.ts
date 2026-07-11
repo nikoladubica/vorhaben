@@ -9,3 +9,18 @@ import type { User } from '../auth/auth-context';
 export function updateBaseCurrency(code: string): Promise<User> {
   return api.patch<User>('/account', { base_currency: code });
 }
+
+// The hosted-assistant usage meter (ticket 12). Deliberately carries NO raw token count — the
+// assistant allowance is only ever shown as a percentage. `warning` at ≥80%, `capped` once the
+// general budget is spent (chat pauses; voice capture keeps working). `resetsAt` is an ISO instant.
+export interface AssistantUsage {
+  percent: number;
+  warning: boolean;
+  capped: boolean;
+  resetsAt: string;
+}
+
+// GET /api/account/usage — the current billing window's assistant usage state.
+export function getAssistantUsage(): Promise<AssistantUsage> {
+  return api.get<AssistantUsage>('/account/usage');
+}

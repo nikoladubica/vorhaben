@@ -2081,6 +2081,30 @@ a.tl-row:hover .tl-n {
   color: var(--ink-2);
 }
 
+/* Assistant usage meter (ticket 12). Percentage line + a hairline progress bar — square, no color
+   beyond the palette (fill is --ink, never red; red stays earned by primary actions). */
+.usage-line {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0 0 10px;
+}
+.usage-line strong {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.usage-meter {
+  height: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  overflow: hidden;
+}
+.usage-fill {
+  height: 100%;
+  background: var(--ink);
+  transition: width 120ms linear;
+}
+
 /* fx-rate table + inline add row (composed from tokens) */
 .fx-table {
   margin-bottom: 16px;

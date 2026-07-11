@@ -38,6 +38,21 @@ export const env = {
   // expose either value to the client (GET /api/voice/capabilities leaks only a boolean).
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   voiceLlmModel: process.env.VOICE_LLM_MODEL ?? 'claude-haiku-4-5',
+  // Hosted-assistant metering (ticket 12; marketing-strategy §3.5). All server-side LLM calls made
+  // with OUR platform key route through server/src/llm/gateway.ts, which meters tokens per user
+  // against these caps. BYOK calls bypass metering entirely (their key, their bill). Values are env
+  // overrides so no literal is scattered through call sites; the defaults are the decided model:
+  //   - monthlyTokenCap: 5,000,000 general budget/user/month (~one month's revenue at worst case).
+  //   - reserveTokens: a 300,000 top-up usable ONLY by pipeline features (voice_parse, digest)
+  //     after the general budget is spent — chat pauses at the cap, workflows keep running.
+  // Per-feature model tiering, each overridable; all default to the cheap Haiku tier for now.
+  // Raw token counts are internal only and NEVER exposed to the client.
+  llm: {
+    monthlyTokenCap: Number(process.env.LLM_MONTHLY_TOKEN_CAP ?? 5_000_000),
+    reserveTokens: Number(process.env.LLM_RESERVE_TOKENS ?? 300_000),
+    chatModel: process.env.CHAT_LLM_MODEL ?? 'claude-haiku-4-5',
+    digestModel: process.env.DIGEST_LLM_MODEL ?? 'claude-haiku-4-5',
+  },
   db: {
     host: required('DB_HOST', 'localhost'),
     port: Number(process.env.DB_PORT ?? 3307),

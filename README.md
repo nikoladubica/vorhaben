@@ -67,10 +67,26 @@ fully usable without a key, and any LLM error falls back to the rules parser.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | _(unset)_ | Enables LLM structuring. Unset → rules parser only. Never exposed to the client. |
-| `VOICE_LLM_MODEL` | `claude-opus-4-8` | Model used for structuring when a key is set. |
+| `VOICE_LLM_MODEL` | `claude-haiku-4-5` | Model used for voice-capture structuring when a key is set. |
 
 The transcript is sent to Anthropic only when a key is configured; audio never leaves the
 browser, and `POST /api/voice/parse` never persists anything.
+
+### Hosted-assistant metering (optional)
+
+On the hosted plan, every server-side LLM call made with the platform `ANTHROPIC_API_KEY`
+routes through one gateway that meters tokens per user and enforces a monthly fair-use cap.
+Usage is surfaced to users only as a percentage (Settings → Assistant); raw token counts are
+internal and never reach the client. Self-host instances with no key see no meter. A user's own
+key (BYOK, future) bypasses metering and the cap entirely. These caps and per-feature models are
+env-overridable so nothing is hardcoded at the call sites:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `LLM_MONTHLY_TOKEN_CAP` | `5000000` | General assistant budget per user per calendar month. Chat pauses when it is reached. |
+| `LLM_RESERVE_TOKENS` | `300000` | Extra pipeline-only reserve above the cap — voice capture and digests keep running from it after chat pauses. |
+| `CHAT_LLM_MODEL` | `claude-haiku-4-5` | Model for the (future) chat feature. |
+| `DIGEST_LLM_MODEL` | `claude-haiku-4-5` | Model for the (future) email digest feature. |
 
 ## Development
 
