@@ -32,6 +32,9 @@ interface Props {
   onRemove: () => void;
   onDropMarkdown: (file: File) => void;
   onPointerDown: (e: PointerEvent<HTMLDivElement>) => void;
+  // Callback ref to the card's root element, so the board can measure real rendered sizes for
+  // collision (heights vary with content). Optional — hosts that don't need measuring omit it.
+  rootRef?: (el: HTMLDivElement | null) => void;
 }
 
 // The normalized headline line — "CHF 2'480 monthly-eq · 62/h", with an em dash for any figure the
@@ -58,6 +61,7 @@ export function CanvasCard({
   onRemove,
   onDropMarkdown,
   onPointerDown,
+  rootRef,
 }: Props) {
   // A file is hovering over the card — draws the --ink border (matches the .drag treatment; never red).
   const [over, setOver] = useState(false);
@@ -83,6 +87,7 @@ export function CanvasCard({
 
   return (
     <div
+      ref={rootRef}
       className={`cv-card${dragging ? ' drag' : ''}${over ? ' over' : ''}`}
       style={style}
       onPointerDown={onPointerDown}

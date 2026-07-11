@@ -9,6 +9,8 @@ import { useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { CanvasItem, Feeling, Trend } from '../../types';
 import { CanvasCard } from './CanvasCard';
+import { findFreeSpot } from './layout';
+import type { Rect } from './layout';
 
 const GRID = 24;
 const CARD_W = 216;
@@ -64,8 +66,36 @@ export function CanvasBoardView({
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   // Tray-to-board drag ghost (client-space top-left), or null when idle.
   const [trayGhost, setTrayGhost] = useState<TrayGhost | null>(null);
+  // Where the dragged card will actually land (resolved through findFreeSpot), sized to the dragged
+  // card. Drawn as a quiet dashed outline during a drag; null when idle.
+  const [dropTarget, setDropTarget] = useState<Rect | null>(null);
 
   const boardRef = useRef<HTMLDivElement>(null);
+  // Rendered card roots, keyed by project_id — used to measure real sizes for collision, since card
+  // heights depend on content (feeling/trend rows, chips) and only the client knows them.
+  const cardEls = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  function setCardEl(projectId: number, el: HTMLDivElement | null) {
+    if (el) cardEls.current.set(projectId, el);
+    else cardEls.current.delete(projectId);
+  }
+
+  // The board-space rectangles of every placed card except `excludeId` (the one being dragged).
+  // Sizes come from the rendered elements; unmeasurable cards fall back to the constants.
+  function buildOccupied(excludeId: number): Rect[] {
+    const rects: Rect[] = [];
+    for (const it of placed) {
+      if (it.project_id === excludeId) continue;
+      const el = cardEls.current.get(it.project_id);
+      rects.push({
+        x: it.x ?? 0,
+        y: it.y ?? 0,
+        w: el?.offsetWidth ?? CARD_W,
+        h: el?.offsetHeight ?? CARD_H_EST,
+      });
+    }
+    return rects;
+  }
 
   // ————— board-card drag (Pointer Events) —————
 
@@ -92,10 +122,33 @@ export function CanvasBoardView({
     setDragId(item.project_id);
     setDragPos({ x: startX, y: startY });
 
+    // Occupied rects are stable for the duration of this drag (no other card moves). Memoize the
+    // resolved landing spot per snapped grid cell so we don't re-run the search every pointermove.
+    const occupied = buildOccupied(item.project_id);
+    let lastKey = '';
+    let lastFree = { x: startX, y: startY };
+    const resolve = (clientX: number, clientY: number) => {
+      const snappedX = clamp(snap(clamp(clientX - br.left - dx, maxX)), maxX);
+      const snappedY = clamp(snap(clamp(clientY - br.top - dy, maxY)), maxY);
+      const key = `${snappedX},${snappedY}`;
+      if (key !== lastKey) {
+        lastKey = key;
+        lastFree = findFreeSpot({ x: snappedX, y: snappedY, w, h }, occupied, {
+          w: board.clientWidth,
+          h: board.clientHeight,
+        });
+      }
+      return lastFree;
+    };
+
+    setDropTarget({ x: startX, y: startY, w, h });
+
     const move = (ev: PointerEvent) => {
       const x = clamp(ev.clientX - br.left - dx, maxX);
       const y = clamp(ev.clientY - br.top - dy, maxY);
       setDragPos({ x, y });
+      const free = resolve(ev.clientX, ev.clientY);
+      setDropTarget({ x: free.x, y: free.y, w, h });
     };
 
     const up = (ev: PointerEvent) => {
@@ -104,15 +157,13 @@ export function CanvasBoardView({
       cardEl.removeEventListener('pointercancel', up);
       setDragId(null);
       setDragPos(null);
+      setDropTarget(null);
 
-      const movedX = clamp(ev.clientX - br.left - dx, maxX);
-      const movedY = clamp(ev.clientY - br.top - dy, maxY);
-      const x = clamp(snap(movedX), maxX);
-      const y = clamp(snap(movedY), maxY);
+      const free = resolve(ev.clientX, ev.clientY);
 
-      // No real move — don't churn a save.
-      if (x === startX && y === startY) return;
-      onPlace(item.project_id, x, y);
+      // No real move (against the RESOLVED spot) — don't churn a save.
+      if (free.x === startX && free.y === startY) return;
+      onPlace(item.project_id, free.x, free.y);
     };
 
     cardEl.addEventListener('pointermove', move);
@@ -133,8 +184,35 @@ export function CanvasBoardView({
     el.classList.add('drag');
     setTrayGhost({ item, left: e.clientX - dx, top: e.clientY - dy });
 
+    // A tray card has never rendered, so its own size uses the fallbacks (erring small is fine —
+    // the next move self-corrects). Resolve returns whether the pointer is over the board plus the
+    // collision-free landing spot; occupied is rebuilt per call since it's read only on move/up.
+    const resolve = (
+      clientX: number,
+      clientY: number,
+    ): { over: boolean; free: { x: number; y: number } } | null => {
+      const board = boardRef.current;
+      if (!board) return null;
+      const br = board.getBoundingClientRect();
+      const over =
+        clientX >= br.left && clientX <= br.right && clientY >= br.top && clientY <= br.bottom;
+      const maxX = board.clientWidth - CARD_W;
+      const maxY = Math.max(0, board.clientHeight - CARD_H_EST);
+      const snappedX = clamp(snap(clamp(clientX - dx - br.left, maxX)), maxX);
+      const snappedY = clamp(snap(clamp(clientY - dy - br.top, maxY)), maxY);
+      const free = findFreeSpot(
+        { x: snappedX, y: snappedY, w: CARD_W, h: CARD_H_EST },
+        buildOccupied(item.project_id),
+        { w: board.clientWidth, h: board.clientHeight },
+      );
+      return { over, free };
+    };
+
     const move = (ev: PointerEvent) => {
       setTrayGhost({ item, left: ev.clientX - dx, top: ev.clientY - dy });
+      const r = resolve(ev.clientX, ev.clientY);
+      if (r && r.over) setDropTarget({ x: r.free.x, y: r.free.y, w: CARD_W, h: CARD_H_EST });
+      else setDropTarget(null);
     };
 
     const up = (ev: PointerEvent) => {
@@ -143,23 +221,11 @@ export function CanvasBoardView({
       el.removeEventListener('pointercancel', up);
       el.classList.remove('drag');
       setTrayGhost(null);
+      setDropTarget(null);
 
-      const board = boardRef.current;
-      if (!board) return;
-      const br = board.getBoundingClientRect();
-      const over =
-        ev.clientX >= br.left &&
-        ev.clientX <= br.right &&
-        ev.clientY >= br.top &&
-        ev.clientY <= br.bottom;
-      if (!over) return;
-
-      const maxX = board.clientWidth - CARD_W;
-      const maxY = Math.max(0, board.clientHeight - CARD_H_EST);
-      const x = clamp(snap(clamp(ev.clientX - dx - br.left, maxX)), maxX);
-      const y = clamp(snap(clamp(ev.clientY - dy - br.top, maxY)), maxY);
-
-      onPlace(item.project_id, x, y);
+      const r = resolve(ev.clientX, ev.clientY);
+      if (!r || !r.over) return;
+      onPlace(item.project_id, r.free.x, r.free.y);
     };
 
     el.addEventListener('pointermove', move);
@@ -217,9 +283,22 @@ export function CanvasBoardView({
                 onRemove={() => onRemove(item.project_id)}
                 onDropMarkdown={(file) => onDropMarkdown(item.project_id, file)}
                 onPointerDown={(e) => onCardPointerDown(e, item)}
+                rootRef={(el) => setCardEl(item.project_id, el)}
               />
             );
           })}
+          {dropTarget && (
+            <div
+              className="cv-drop-target"
+              style={{
+                left: dropTarget.x,
+                top: dropTarget.y,
+                width: dropTarget.w,
+                height: dropTarget.h,
+              }}
+              aria-hidden="true"
+            />
+          )}
         </div>
       </div>
 

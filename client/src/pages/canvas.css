@@ -102,6 +102,17 @@
   line-height: 1.5;
 }
 
+/* Drop-target outline — shown during a drag at the resolved (collision-free) landing spot, so a
+   nudged card is never a surprise. Quiet dashed hairline, transparent fill, square corners, no
+   shadow; sits under the dragged card and ignores the pointer. */
+.cv-drop-target {
+  position: absolute;
+  border: 1px dashed var(--ink-3);
+  background: transparent;
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* ————— card ————— */
 .cv-card {
   position: absolute;
