@@ -6,6 +6,7 @@ import { listProjectTypes, listProjects, restoreProject } from '../api/projects'
 import { ProjectFilters } from '../components/projects/ProjectFilters';
 import { StatusBadge } from '../components/projects/StatusBadge';
 import { Timeline } from '../components/dashboard/Timeline';
+import { MoodNudge } from '../components/mood/MoodNudge';
 import { formatMoney } from '../domain/format';
 import { useAuth } from '../auth/useAuth';
 
@@ -185,6 +186,8 @@ export function ProjectsPage() {
           </Link>
         </div>
       </div>
+
+      <MoodNudge />
 
       {trashed && (
         <div className="undo-banner" role="status">

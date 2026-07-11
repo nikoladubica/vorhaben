@@ -20,6 +20,7 @@ import { TrendChart } from '../components/dashboard/TrendChart';
 import { CompositionBar } from '../components/dashboard/CompositionBar';
 import { Timeline } from '../components/dashboard/Timeline';
 import { MissingRatesNotice } from '../components/dashboard/MissingRatesNotice';
+import { MoodNudge } from '../components/mood/MoodNudge';
 
 // The trend/timeline/composition window options (months). The server clamps 1–36; the UI offers
 // the three the design calls for and defaults to 6.
@@ -160,6 +161,7 @@ export function DashboardPage() {
     return (
       <div>
         {header}
+        <MoodNudge />
         <div className="panel">
           <div className="table-empty">
             <p>
@@ -180,6 +182,8 @@ export function DashboardPage() {
   return (
     <div className={loading ? 'dash-loading' : undefined}>
       {header}
+
+      <MoodNudge />
 
       <MissingRatesNotice currencies={warnings.missing_rates} />
 

@@ -197,6 +197,20 @@ export interface NoteInput {
   body_md: string;
 }
 
+// A single event in a project's mood stream (ticket 01 / §2.2). The project still shows one
+// current feeling; underneath, every change is appended here — like a bank ledger. `value` is one
+// of the closed FEELINGS or null (feeling cleared); `note` is the optional one-line "why" (stored
+// verbatim). `source` is manual | nudge | weekly_close. `source_transcript` is never exposed in
+// list reads. `created_at` is a real ISO timestamp (unlike the YYYY-MM-DD dates elsewhere). Mirrors
+// the row shape returned by server/src/routes/moods.ts.
+export interface MoodEvent {
+  id: number;
+  value: Feeling | null;
+  note: string | null;
+  source: string;
+  created_at: string;
+}
+
 // A note as returned by GET /api/notes — the cross-project journal feed (screen 10). Same shape
 // as Note plus the owning project's name, so the standalone browser can group rows by project
 // without a second lookup. Server orders by project name, then newest-touched first.

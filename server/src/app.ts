@@ -12,6 +12,7 @@ import { projectEntriesRouter, entriesRouter } from './routes/incomeEntries.js';
 import { projectExpensesRouter, expensesRouter } from './routes/expenseEntries.js';
 import { projectTimeLogsRouter, timeLogsRouter } from './routes/timeLogs.js';
 import { projectNotesRouter, notesRouter } from './routes/notes.js';
+import { projectMoodsRouter, moodsRouter } from './routes/moods.js';
 import { canvasRouter } from './routes/canvas.js';
 import { fxRatesRouter } from './routes/fxRates.js';
 import { dashboardRouter } from './routes/dashboard.js';
@@ -49,6 +50,9 @@ app.use('/api/projects', requireAuth, projectTimeLogsRouter);
 // Nested note routes (/:id/notes) share the /api/projects mount, same pattern again: /:id is a
 // single segment so it never captures /:id/notes.
 app.use('/api/projects', requireAuth, projectNotesRouter);
+// Nested mood-stream routes (/:id/moods) share the /api/projects mount, same single-segment /:id
+// pattern, so /:id never captures /:id/moods.
+app.use('/api/projects', requireAuth, projectMoodsRouter);
 // Canvas board: card placement + tray. Placed/tray cards reuse the projects/notes/metrics data,
 // so this mounts alongside the other project-related routers.
 app.use('/api/canvas', requireAuth, canvasRouter);
@@ -57,6 +61,8 @@ app.use('/api/entries', requireAuth, entriesRouter);
 app.use('/api/expenses', requireAuth, expensesRouter);
 app.use('/api/time-logs', requireAuth, timeLogsRouter);
 app.use('/api/notes', requireAuth, notesRouter);
+// Mood stream: /moods/today drives the in-app daily nudge (in-app only — never push/email).
+app.use('/api/moods', requireAuth, moodsRouter);
 app.use('/api/fx-rates', requireAuth, fxRatesRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
 app.use('/api/account', requireAuth, accountRouter);

@@ -15,6 +15,7 @@ import { EntriesSection } from '../components/entries/EntriesSection';
 import { ExpensesSection } from '../components/entries/ExpensesSection';
 import { TimeLogsSection } from '../components/entries/TimeLogsSection';
 import { NotesSection } from '../components/notes/NotesSection';
+import { MoodSection } from '../components/mood/MoodSection';
 import { ProjectDataSection } from '../components/projects/ProjectDataSection';
 import { ProjectKpiBar } from '../components/projects/ProjectKpiBar';
 
@@ -337,6 +338,7 @@ export function ProjectDetailPage() {
         </div>
 
         <div className="pd-col">
+          <MoodSection projectId={project.id} feeling={project.feeling} />
           <div className="panel">
             <div className="panel-h">
               <span className="t">Compensation</span>

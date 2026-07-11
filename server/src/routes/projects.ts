@@ -13,6 +13,7 @@ import {
 import { deriveStatus, flagFromStatus, type StatusFlag } from '../domain/projectStatus.js';
 import { syncProjectTags } from '../db/tags.js';
 import { computeMetricsForUser } from '../domain/metrics.js';
+import { recordMood } from '../domain/mood.js';
 
 export const projectsRouter = Router();
 
@@ -556,15 +557,27 @@ projectsRouter.patch('/:id', async (req, res) => {
     today: todayString(),
   });
 
+  // The `feeling` write goes through the mood stream, never straight to the column: setting a
+  // feeling now appends (or, inside the settling window, edits) a mood_events row AND updates
+  // projects.feeling — in this same transaction so the column and the stream never disagree. Every
+  // other column is written directly as before. The canvas client is unchanged: setProjectFeeling
+  // still PATCHes `{ feeling }`; it just gained a memory. Validation and the 422 shape are untouched
+  // (feeling is already validated above against the closed FEELINGS list).
+  const feelingProvided = Object.prototype.hasOwnProperty.call(columns, 'feeling');
+  const { feeling, ...otherColumns } = columns;
+
   const updated = await db.transaction(async (trx) => {
     await trx('projects')
       .where({ id, user_id: userId })
       .whereNull('deleted_at')
       .update({
-        ...columns,
+        ...otherColumns,
         status,
         updated_at: trx.fn.now(),
       });
+    if (feelingProvided) {
+      await recordMood(userId, id, feeling ?? null, { source: 'manual' }, trx);
+    }
     if (tagsProvided) {
       await syncProjectTags(trx, userId, id, tags);
     }
