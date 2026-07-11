@@ -1,0 +1,297 @@
+/* Worth-It Matrix (breaktrough.md §2.6) — the signature quadrant screen. Ported from the approved
+   design direction (.claude/design/vorhaben-design.html §16). Tokens only, square corners, hairline
+   borders, light theme. The two quadrant boundary lines render with --bar-mute (a real chart-mark
+   token): the design mock used a non-token grey, which the token rule forbids here. */
+
+.mx-layout {
+  display: grid;
+  grid-template-columns: 1fr 328px;
+  gap: 24px;
+  align-items: start;
+}
+/* No plottable projects / no selection: the point of view still renders, full-width. */
+.mx-layout.solo {
+  grid-template-columns: 1fr;
+}
+
+.mx-chartwrap {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+.mx-chart-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px 0;
+}
+.mx-chart-h .t {
+  font-size: 14px;
+  font-weight: 700;
+}
+.mx-chart-h .s {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.mx-scroll {
+  overflow-x: auto; /* mobile: scroll, never reflow — the 2×2 stays a matrix */
+  padding: 6px 12px 2px;
+}
+.mx-plot {
+  min-width: 520px;
+  display: block;
+}
+figure.mx-fig {
+  margin: 0;
+}
+
+/* ————— svg text roles ————— */
+.mx-stance {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.mx-sub {
+  font-size: 11.5px;
+  fill: var(--ink-3);
+}
+.mx-pole {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.mx-axis {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.mx-name {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ink-2);
+  pointer-events: none;
+}
+.mx-name.sel {
+  font-weight: 700;
+  fill: var(--ink);
+}
+.mx-tickv {
+  font-size: 10.5px;
+  fill: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.mx-tickv.med {
+  fill: var(--ink-2);
+  font-weight: 600;
+}
+.mx-medlbl {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.mx-empty {
+  font-size: 13px;
+  fill: var(--ink-2);
+}
+
+/* ————— dots (position carries meaning; size ∝ monthly hours) ————— */
+.mx-dot {
+  fill: var(--bar-mute);
+  cursor: pointer;
+  transition: fill 90ms ease;
+}
+.mx-dot:hover {
+  fill: var(--ink-2);
+}
+.mx-dot.sel {
+  fill: var(--ink); /* a kill-candidate dot is never red — the label carries the judgment */
+}
+.mx-dot:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+.mx-ring {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1;
+} /* harsh-swing marker (not colour) */
+.mx-halo {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+} /* selection */
+
+/* ————— legend ————— */
+.mx-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  padding: 10px 20px 16px;
+  border-top: 1px solid var(--grid);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.mx-legend .li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.mx-legend svg {
+  display: block;
+  flex: none;
+}
+
+/* ————— honest absence: unplottable projects listed, never faked onto the grid ————— */
+.mx-missing {
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--hairline);
+}
+.mx-missing .k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.mx-missing p {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 6px 0 0;
+  max-width: 62ch;
+}
+.mx-missing p b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ————— click-through side panel ————— */
+.mx-side {
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+.mx-side-h {
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+.mx-side-h h4 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mx-side-h .stance {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 10px;
+}
+.mx-side-h .stance small {
+  display: block;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 3px;
+}
+.mx-signal {
+  background: var(--paper);
+  border-top: 2px solid var(--red);
+  padding: 13px 16px;
+}
+.mx-signal .k {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.mx-signal p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 6px 0 0;
+}
+.mx-side-b {
+  padding: 14px 18px 4px;
+}
+.mx-sec-lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 4px 0 8px;
+}
+.mx-sec-lbl.mt {
+  margin-top: 18px;
+}
+.mx-side-foot {
+  padding: 8px 18px 16px;
+}
+.mx-side-note {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  padding: 4px 18px 16px;
+}
+
+/* ————— mood stream — the reused click-through history list ————— */
+.mstream {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+.mev {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--grid);
+}
+.mstream .mev:first-child {
+  border-top: 0;
+}
+.mev .mf {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mev .mw {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mev .mn {
+  grid-column: 1 / -1;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+@media (max-width: 960px) {
+  /* the panel stacks below, but the 2×2 itself never reflows — it stays a square in a
+     horizontal-scroll frame */
+  .mx-layout {
+    grid-template-columns: 1fr;
+  }
+  .mx-plot {
+    min-width: 480px;
+  }
+}

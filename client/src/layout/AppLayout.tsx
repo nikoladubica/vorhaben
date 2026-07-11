@@ -92,6 +92,9 @@ export function AppLayout() {
             <NavLink to="/canvas" className={({ isActive }) => (isActive ? 'on' : undefined)}>
               Canvas
             </NavLink>
+            <NavLink to="/matrix" className={({ isActive }) => (isActive ? 'on' : undefined)}>
+              Matrix
+            </NavLink>
             <NavLink to="/capture" className={({ isActive }) => (isActive ? 'on' : undefined)}>
               Capture
             </NavLink>

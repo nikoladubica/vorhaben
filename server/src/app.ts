@@ -17,6 +17,7 @@ import { canvasRouter } from './routes/canvas.js';
 import { fxRatesRouter } from './routes/fxRates.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { signalsRouter } from './routes/signals.js';
+import { matrixRouter } from './routes/matrix.js';
 import { closesRouter } from './routes/closes.js';
 import { accountRouter } from './routes/account.js';
 import { tagsRouter } from './routes/tags.js';
@@ -70,6 +71,10 @@ app.use('/api/dashboard', requireAuth, dashboardRouter);
 // Mood analysis engine + First Signal (breaktrough.md §2.3–§2.4). On-demand per-project signals,
 // read next to effective hourly rate; pure heuristics, no LLM, identical self-hosted and hosted.
 app.use('/api/signals', requireAuth, signalsRouter);
+// Worth-It Matrix read model (breaktrough.md §2.6). Combined per-project rate + monthly hours +
+// trend_score + swing + confidence + First Signal sentence for EVERY active project (plottable or
+// not), plus the portfolio median rate. On demand, user-scoped and soft-delete aware.
+app.use('/api/matrix', requireAuth, matrixRouter);
 // Weekly Close ritual (breaktrough.md §2.5). /current is the banner + page read-model; POST records
 // an idempotent completion; /settings persists the close-day preference. Every query is user-scoped
 // and soft-delete aware.
