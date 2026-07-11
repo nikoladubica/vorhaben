@@ -11,6 +11,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Dashboard, Suggestion } from '../api/dashboard';
 import { getDashboard, getSuggestions } from '../api/dashboard';
+import type { Signal } from '../api/signals';
+import { getSignals } from '../api/signals';
 import { listProjectTypes } from '../api/projects';
 import type { ProjectType } from '../types';
 import { KpiRow } from '../components/dashboard/KpiRow';
@@ -21,6 +23,7 @@ import { CompositionBar } from '../components/dashboard/CompositionBar';
 import { Timeline } from '../components/dashboard/Timeline';
 import { MissingRatesNotice } from '../components/dashboard/MissingRatesNotice';
 import { MoodNudge } from '../components/mood/MoodNudge';
+import { SignalsPanel } from '../components/dashboard/SignalsPanel';
 
 // The trend/timeline/composition window options (months). The server clamps 1–36; the UI offers
 // the three the design calls for and defaults to 6.
@@ -40,8 +43,9 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Suggestions and type labels load independently — neither can break the dashboard.
+  // Suggestions, signals and type labels load independently — none can break the dashboard.
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [signals, setSignals] = useState<Signal[]>([]);
   const [types, setTypes] = useState<ProjectType[]>([]);
 
   // Re-fetch the dashboard whenever the window changes. Keep the previous payload on screen while
@@ -70,6 +74,13 @@ export function DashboardPage() {
     getSuggestions()
       .then((res) => setSuggestions(res.suggestions))
       .catch(() => setSuggestions([]));
+  }, []);
+
+  useEffect(() => {
+    // Same independent-fetch pattern: a failure here shows no Signals panel, never blocks the page.
+    getSignals()
+      .then((res) => setSignals(res.signals))
+      .catch(() => setSignals([]));
   }, []);
 
   useEffect(() => {
@@ -226,6 +237,8 @@ export function DashboardPage() {
       </div>
 
       <FocusCallout suggestions={suggestions} nameById={nameById} />
+
+      <SignalsPanel signals={signals} />
 
       <div className="cols">
         <div className="panel">

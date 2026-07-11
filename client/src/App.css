@@ -1684,6 +1684,67 @@ a.rank-row:hover .n {
   font-weight: 600;
 }
 
+/* signals panel (First Signal — breaktrough.md §2.3–§2.4): a quiet list of per-project mood reads,
+   sentences only (no numbers, no charts), each row linking to its project. Red stays reserved — a
+   signal never renders in red, at rest or on hover. */
+.signals {
+  margin-top: 24px;
+}
+.signal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.signal-row {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.signal-row:first-child {
+  padding-top: 4px;
+}
+.signal-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+.signal-link {
+  display: block;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  text-decoration: none;
+  max-width: 60ch;
+}
+.signal-link:hover,
+.signal-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ink-3);
+}
+.signal-link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.signal-more {
+  margin-top: 12px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.signal-more:hover {
+  color: var(--ink);
+}
+.signal-more:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 /* chart tooltip (verbatim from the design file's #tip) */
 .chart-tip {
   position: fixed;

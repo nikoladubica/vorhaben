@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { Project, ProjectMetrics, ProjectPayload, ProjectStatus, ProjectType } from '../types';
 import { getProject, getProjectMetrics, listProjectTypes, updateProject } from '../api/projects';
+import type { Signal } from '../api/signals';
+import { getSignals } from '../api/signals';
 import { COMPENSATION_CONFIG, modelHasAmount } from '../domain/compensation';
 import { formatFullDate, formatMoney, formatMonthYear, todayString } from '../domain/format';
 import { StatusBadge } from '../components/projects/StatusBadge';
@@ -90,6 +92,9 @@ export function ProjectDetailPage() {
   // Normalized revenue / expenses / net summary (§8). Optional garnish, like the dashboard's
   // suggestions: a failed fetch simply hides the line and never blocks the rest of the screen.
   const [metrics, setMetrics] = useState<ProjectMetrics | null>(null);
+  // This project's own First Signal, if the engine has one to say. Optional garnish, like metrics:
+  // the endpoint is per-user (no per-project variant), so we fetch the list and pick our project.
+  const [signal, setSignal] = useState<Signal | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -134,6 +139,21 @@ export function ProjectDetailPage() {
       .then(setTypes)
       .catch(() => setTypes([]));
   }, []);
+
+  useEffect(() => {
+    if (projectId === null || !Number.isInteger(projectId)) return;
+    let cancelled = false;
+    getSignals()
+      .then((res) => {
+        if (!cancelled) setSignal(res.signals.find((s) => s.project_id === projectId) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSignal(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   // Reload the normalized summary. Passed to both entry sections as `onChanged` so the figures
   // stay in step with income/expense edits. The metrics use the canonical trailing-3-month window
@@ -338,7 +358,7 @@ export function ProjectDetailPage() {
         </div>
 
         <div className="pd-col">
-          <MoodSection projectId={project.id} feeling={project.feeling} />
+          <MoodSection projectId={project.id} feeling={project.feeling} signal={signal} />
           <div className="panel">
             <div className="panel-h">
               <span className="t">Compensation</span>

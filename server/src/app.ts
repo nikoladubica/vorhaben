@@ -16,6 +16,7 @@ import { projectMoodsRouter, moodsRouter } from './routes/moods.js';
 import { canvasRouter } from './routes/canvas.js';
 import { fxRatesRouter } from './routes/fxRates.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { signalsRouter } from './routes/signals.js';
 import { accountRouter } from './routes/account.js';
 import { tagsRouter } from './routes/tags.js';
 import { exportRouter, importRouter } from './routes/exportImport.js';
@@ -65,6 +66,9 @@ app.use('/api/notes', requireAuth, notesRouter);
 app.use('/api/moods', requireAuth, moodsRouter);
 app.use('/api/fx-rates', requireAuth, fxRatesRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
+// Mood analysis engine + First Signal (breaktrough.md §2.3–§2.4). On-demand per-project signals,
+// read next to effective hourly rate; pure heuristics, no LLM, identical self-hosted and hosted.
+app.use('/api/signals', requireAuth, signalsRouter);
 app.use('/api/account', requireAuth, accountRouter);
 app.use('/api/tags', requireAuth, tagsRouter);
 // Voice capture (§ voice-capture). Transcript parsing (side-effect free) + capability probe, then

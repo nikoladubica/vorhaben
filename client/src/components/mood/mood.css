@@ -77,6 +77,28 @@
   line-height: 1.5;
 }
 
+/* ————— First Signal line (breaktrough.md §2.3–§2.4): the project's own mood read, under the
+   stream. Words only — a confidence eyebrow labels how much data backs it; no numbers, no red. */
+.mood-signal {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+.mood-signal-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.mood-signal-text {
+  margin: 7px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
 /* ————— daily nudge bar (shared: Dashboard + Projects) ————— */
 .mood-nudge {
   position: relative;

@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Feeling, MoodEvent } from '../../types';
+import type { Signal } from '../../api/signals';
 import { listProjectMoods, logProjectMood } from '../../api/moods';
 import { formatRelativeTime } from '../../domain/format';
 import { FeelingPicker } from '../canvas/FeelingPicker';
@@ -16,10 +17,21 @@ interface MoodSectionProps {
   projectId: number;
   // The project's current feeling (the denormalized column value) — the starting display.
   feeling: Feeling | null;
+  // This project's First Signal (breaktrough.md §2.3–§2.4), or null when the engine has nothing to
+  // say yet. Rendered as words under the stream — never numbers, never red.
+  signal: Signal | null;
 }
 
 // How many recent stream entries to show — a quiet glance at history, not the full ledger.
 const STREAM_LIMIT = 10;
+
+// confidence → the eyebrow's leading phrase. The "· N DAYS OF DATA" suffix (most meaningful for an
+// early signal) is appended from `days`; CSS upper-cases the whole line to the 11px eyebrow style.
+const CONFIDENCE_LABEL: Record<Signal['confidence'], string> = {
+  early: 'Early signal',
+  pattern: 'Pattern',
+  established: 'Established trend',
+};
 
 // 'excited' → 'Excited' for display; state stays lowercase enum values. A cleared feeling (null)
 // reads as "Cleared" in the stream.
@@ -32,7 +44,7 @@ function feelingLabel(value: Feeling | null): string {
 // null to mean "no pending pick".
 type Pending = { value: Feeling | null };
 
-export function MoodSection({ projectId, feeling }: MoodSectionProps) {
+export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
   const [current, setCurrent] = useState<Feeling | null>(feeling);
   const [events, setEvents] = useState<MoodEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,6 +185,16 @@ export function MoodSection({ projectId, feeling }: MoodSectionProps) {
               </li>
             ))}
           </ul>
+        )}
+
+        {signal && (
+          <div className="mood-signal">
+            <span className="mood-signal-eyebrow">
+              {CONFIDENCE_LABEL[signal.confidence]} · {signal.days}{' '}
+              {signal.days === 1 ? 'day' : 'days'} of data
+            </span>
+            <p className="mood-signal-text">{signal.sentence}</p>
+          </div>
         )}
       </div>
     </div>
