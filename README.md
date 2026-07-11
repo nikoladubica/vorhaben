@@ -3,7 +3,7 @@
 Track and manage your business endeavours - an open-source project tracker for people juggling
 more than one thing at once.
 
-*Vorhaben* is German for "undertaking" / "venture".
+_Vorhaben_ is German for "undertaking" / "venture".
 
 ## Stack
 
@@ -43,11 +43,11 @@ Compose builds the app image, waits for MariaDB to be healthy, runs database
 migrations on boot, and serves everything on one port. Your data lives in
 `./.docker/mariadb-data`.
 
-| Task | Command |
-| --- | --- |
-| Start / update | `docker compose up -d --build` |
-| Stop | `docker compose down` |
-| View logs | `docker compose logs -f app` |
+| Task            | Command                                   |
+| --------------- | ----------------------------------------- |
+| Start / update  | `docker compose up -d --build`            |
+| Stop            | `docker compose down`                     |
+| View logs       | `docker compose logs -f app`              |
 | Change the port | set `APP_PORT` in `.env` (default `8080`) |
 
 **Serving over HTTPS?** Put it behind a reverse proxy (Caddy, nginx, Traefik) and
@@ -64,10 +64,10 @@ Setting an Anthropic API key upgrades the parse step to an LLM for cleaner title
 item splitting, and resolved dates. It only ever improves the parse; every capture kind is
 fully usable without a key, and any LLM error falls back to the rules parser.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ANTHROPIC_API_KEY` | _(unset)_ | Enables LLM structuring. Unset → rules parser only. Never exposed to the client. |
-| `VOICE_LLM_MODEL` | `claude-haiku-4-5` | Model used for voice-capture structuring when a key is set. |
+| Variable            | Default            | Purpose                                                                          |
+| ------------------- | ------------------ | -------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` | _(unset)_          | Enables LLM structuring. Unset → rules parser only. Never exposed to the client. |
+| `VOICE_LLM_MODEL`   | `claude-haiku-4-5` | Model used for voice-capture structuring when a key is set.                      |
 
 The transcript is sent to Anthropic only when a key is configured; audio never leaves the
 browser, and `POST /api/voice/parse` never persists anything.
@@ -81,14 +81,47 @@ internal and never reach the client. Self-host instances with no key see no mete
 key (BYOK, future) bypasses metering and the cap entirely. These caps and per-feature models are
 env-overridable so nothing is hardcoded at the call sites:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `LLM_MONTHLY_TOKEN_CAP` | `5000000` | General assistant budget per user per calendar month. Chat pauses when it is reached. |
-| `LLM_RESERVE_TOKENS` | `300000` | Extra pipeline-only reserve above the cap — voice capture and digests keep running from it after chat pauses. |
-| `CHAT_LLM_MODEL` | `claude-haiku-4-5` | Model for the (future) chat feature. |
-| `DIGEST_LLM_MODEL` | `claude-haiku-4-5` | Model for the (future) email digest feature. |
-| `INVOICE_SCAN_MODEL` | `claude-sonnet-5` | Model for the Max-tier invoice scanner. It runs on Sonnet (extraction quality) rather than Haiku. |
-| `INVOICE_SCAN_MONTHLY_CAP` | `100` | Scans per user per calendar month on the platform key. Metered by scan count, not tokens; BYOK is uncapped. |
+| Variable                   | Default            | Purpose                                                                                                       |
+| -------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `LLM_MONTHLY_TOKEN_CAP`    | `5000000`          | General assistant budget per user per calendar month. Chat pauses when it is reached.                         |
+| `LLM_RESERVE_TOKENS`       | `300000`           | Extra pipeline-only reserve above the cap — voice capture and digests keep running from it after chat pauses. |
+| `CHAT_LLM_MODEL`           | `claude-haiku-4-5` | Model for the (future) chat feature.                                                                          |
+| `DIGEST_LLM_MODEL`         | `claude-haiku-4-5` | Model for the (future) email digest feature.                                                                  |
+| `INVOICE_SCAN_MODEL`       | `claude-sonnet-5`  | Model for the Max-tier invoice scanner. It runs on Sonnet (extraction quality) rather than Haiku.             |
+| `INVOICE_SCAN_MONTHLY_CAP` | `100`              | Scans per user per calendar month on the platform key. Metered by scan count, not tokens; BYOK is uncapped.   |
+
+## Connect Claude (MCP)
+
+Connect **Claude Desktop** or **Claude Code** to your own instance and ask about your projects in
+plain language — _"which project has the best effective hourly rate?"_, _"log €600 against Acme
+for last Tuesday"_. This is the free / self-host tier of the assistant: your data inside Claude's
+app, using your own Claude subscription. vorhaben ships no keys and makes no LLM calls for it.
+
+The `mcp/` workspace is a small stdio server that adapts the REST API into MCP tools. It logs in
+with your account and reuses the same session as the web app, so it inherits auth, per-user
+scoping, and the normalization engine — the figures it returns are computed server-side, never
+re-derived. Add this to Claude Desktop's `claude_desktop_config.json` (or a `.mcp.json` for Claude
+Code):
+
+```json
+{
+  "mcpServers": {
+    "vorhaben": {
+      "command": "npx",
+      "args": ["tsx", "/absolute/path/to/vorhaben/mcp/src/index.ts"],
+      "env": {
+        "VORHABEN_API_URL": "http://localhost:4001",
+        "VORHABEN_EMAIL": "you@example.com",
+        "VORHABEN_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+Read tools are pull-only; write tools (add income/expense, log time, create notes/reminders, log
+mood) are confirmed by the Claude client before they run. Full tool list, env vars, and the Docker
+self-host port note are in [`.claude/docs/backend/mcp.md`](.claude/docs/backend/mcp.md).
 
 ## Development
 
@@ -118,15 +151,15 @@ npm run dev
 
 ### Scripts
 
-| Script | Description |
-| --- | --- |
-| `npm run dev` | Run client and server in watch mode |
-| `npm run build` | Build client and server for production |
-| `npm run lint` | Lint client and server |
-| `npm run format` | Format the repo with Prettier |
-| `npm run typecheck` | Type-check client and server |
-| `npm run migrate` | Run database migrations |
-| `npm run migrate:rollback` | Roll back the last migration batch |
+| Script                     | Description                            |
+| -------------------------- | -------------------------------------- |
+| `npm run dev`              | Run client and server in watch mode    |
+| `npm run build`            | Build client and server for production |
+| `npm run lint`             | Lint client and server                 |
+| `npm run format`           | Format the repo with Prettier          |
+| `npm run typecheck`        | Type-check client and server           |
+| `npm run migrate`          | Run database migrations                |
+| `npm run migrate:rollback` | Roll back the last migration batch     |
 
 ## Documentation
 
@@ -135,6 +168,7 @@ Deeper docs live in `.claude/docs/`:
 - [`backend/data-model.md`](.claude/docs/backend/data-model.md) — every table, columns, indexes, FKs.
 - [`backend/api.md`](.claude/docs/backend/api.md) — the full HTTP API, grouped by resource, with curl examples.
 - [`backend/normalization.md`](.claude/docs/backend/normalization.md) — how revenue and hourly-rate figures are computed.
+- [`backend/mcp.md`](.claude/docs/backend/mcp.md) — the MCP server: connecting Claude Desktop / Claude Code, tools, and env vars.
 
 The full product spec lives in [`BUSINESS_LOGIC.md`](./BUSINESS_LOGIC.md).
 
