@@ -26,6 +26,7 @@ import { Timeline } from '../components/dashboard/Timeline';
 import { MissingRatesNotice } from '../components/dashboard/MissingRatesNotice';
 import { WeeklyRitual } from '../components/close/WeeklyRitual';
 import { SignalsPanel } from '../components/dashboard/SignalsPanel';
+import { ScenarioPanel } from '../components/dashboard/ScenarioPanel';
 
 // The trend/timeline/composition window options (months). The server clamps 1–36; the UI offers
 // the three the design calls for and defaults to 6.
@@ -293,6 +294,10 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Scenario mode (design screen 12) — a client-side "What if" on the same rankings, mounted
+          last. Uses the full-portfolio revenue ranking so the baseline sums every project. */}
+      <ScenarioPanel rankings={rankings.by_monthly_revenue} baseCurrency={base_currency} />
     </div>
   );
 }

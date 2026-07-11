@@ -2238,9 +2238,181 @@ a.tl-row:hover .tl-n {
   margin: 12px 0 4px;
 }
 
+/* ————— scenario / what-if panel (design screen 12) —————
+   Ported verbatim from the design file (.scn family + range slider + .eyebrow),
+   with the panel wrapped in the shared .panel border and a small chip-style select
+   reusing the same hairline/square-corner tokens as the static .scn-move chips. */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.scn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 24px;
+}
+.scn-left {
+  padding: 28px 32px;
+  border-right: 1px solid var(--hairline);
+}
+.scn-right {
+  padding: 28px 32px;
+  background: var(--paper);
+}
+.scn h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.scn .desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0 0 22px;
+  max-width: 46ch;
+}
+.scn-move {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.scn-move b {
+  border: 1px solid var(--hairline);
+  padding: 6px 12px;
+  font-weight: 600;
+  background: var(--surface);
+}
+.scn-move .hrs {
+  font-weight: 700;
+  color: var(--red);
+  font-variant-numeric: tabular-nums;
+  min-width: 78px;
+  text-align: center;
+  border-color: var(--red);
+}
+.scn-sel {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  padding: 6px 30px 6px 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2355534f' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.scn-sel:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+input[type='range'].sld {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 2px;
+  background: var(--hairline);
+  margin: 18px 0 8px;
+}
+input[type='range'].sld::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px var(--red);
+  cursor: pointer;
+}
+input[type='range'].sld::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--red);
+  cursor: pointer;
+}
+input[type='range'].sld:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 6px;
+}
+.sld-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.scn-out {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.scn-out .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grid);
+  font-size: 13.5px;
+}
+.scn-out .row span:first-child {
+  color: var(--ink-2);
+}
+.scn-out .row b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.scn-out .big {
+  border-bottom: 0;
+  padding-top: 18px;
+}
+.scn-out .big b {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--good);
+}
+.scn-out .big b.flat {
+  /* a zero shift is neutral, never green */
+  color: var(--ink);
+}
+.scn-fine {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  margin-top: 10px;
+}
+/* quiet fallback when fewer than two projects have an effective rate */
+.scn-empty {
+  padding: 28px 32px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
 @media (max-width: 960px) {
   .cols {
     grid-template-columns: 1fr;
+  }
+  .scn {
+    grid-template-columns: 1fr;
+  }
+  .scn-left {
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
   }
   .kpis {
     grid-template-columns: 1fr 1fr;
