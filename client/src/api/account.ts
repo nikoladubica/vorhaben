@@ -10,6 +10,16 @@ export function updateBaseCurrency(code: string): Promise<User> {
   return api.patch<User>('/account', { base_currency: code });
 }
 
+// PATCH /api/account — partial update of own-account settings. Only the fields present are applied;
+// the server requires at least one. Returns the updated user. Used by the onboarding wizard (design
+// screen "03") to persist base currency + the track-hours choice in a single call.
+export function updateAccount(patch: {
+  base_currency?: string;
+  track_hours?: boolean;
+}): Promise<User> {
+  return api.patch<User>('/account', patch);
+}
+
 // The hosted-assistant usage meter (ticket 12). Deliberately carries NO raw token count — the
 // assistant allowance is only ever shown as a percentage. `warning` at ≥80%, `capped` once the
 // general budget is spent (chat pauses; voice capture keeps working). `resetsAt` is an ISO instant.

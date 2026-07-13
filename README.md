@@ -66,7 +66,7 @@ fully usable without a key, and any LLM error falls back to the rules parser.
 
 | Variable            | Default            | Purpose                                                                          |
 | ------------------- | ------------------ | -------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY` | _(unset)_          | Enables LLM structuring. Unset → rules parser only. Never exposed to the client. |
+| `KEY_FOR_TEST_USING` | _(unset)_          | Enables LLM structuring. Unset → rules parser only. Never exposed to the client. |
 | `VOICE_LLM_MODEL`   | `claude-haiku-4-5` | Model used for voice-capture structuring when a key is set.                      |
 
 The transcript is sent to Anthropic only when a key is configured; audio never leaves the
@@ -74,7 +74,7 @@ browser, and `POST /api/voice/parse` never persists anything.
 
 ### Hosted-assistant metering (optional)
 
-On the hosted plan, every server-side LLM call made with the platform `ANTHROPIC_API_KEY`
+On the hosted plan, every server-side LLM call made with the platform `KEY_FOR_TEST_USING`
 routes through one gateway that meters tokens per user and enforces a monthly fair-use cap.
 Usage is surfaced to users only as a percentage (Settings → Assistant); raw token counts are
 internal and never reach the client. Self-host instances with no key see no meter. A user's own

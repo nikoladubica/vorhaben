@@ -45,7 +45,7 @@ export const env = {
   // environment and are OPTIONAL — the LLM path activates only when anthropicApiKey is set;
   // otherwise capture degrades to the rules parser. Never write these to a .env file, and never
   // expose either value to the client (GET /api/voice/capabilities leaks only a boolean).
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  anthropicApiKey: process.env.KEY_FOR_TEST_USING,
   voiceLlmModel: process.env.VOICE_LLM_MODEL ?? 'claude-haiku-4-5',
   // Hosted-assistant metering (ticket 12; marketing-strategy §3.5). All server-side LLM calls made
   // with OUR platform key route through server/src/llm/gateway.ts, which meters tokens per user

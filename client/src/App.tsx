@@ -6,6 +6,7 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { OnboardingPage } from './pages/OnboardingPage';
+import { SetupWizardPage } from './pages/SetupWizardPage';
 import { ClosePage } from './pages/ClosePage';
 import { StatementPage } from './pages/StatementPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -52,6 +53,17 @@ function App() {
         element={
           <RequireAuth>
             <OnboardingPage />
+          </RequireAuth>
+        }
+      />
+
+      {/* The onboarding wizard (design screen "03"). Reached from the Honesty Contract's Continue;
+          its own full-page surface outside AppLayout, like /welcome and /close. */}
+      <Route
+        path="/welcome/setup"
+        element={
+          <RequireAuth>
+            <SetupWizardPage />
           </RequireAuth>
         }
       />

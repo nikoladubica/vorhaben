@@ -3,12 +3,13 @@
 // thing back from us — then a single primary action. The copy IS the feature; no illustrations, no
 // mascots. Screen spec by design-guardian-agent; tokens only, one earned red (the CTA).
 //
-// Completion is tracked per-user in localStorage (see ../onboarding). Either action marks it, so the
-// welcome flow never re-appears; an already-onboarded user who reaches /welcome by URL is bounced home.
+// Completion is tracked per-user in localStorage (see ../onboarding). "Continue" hands off to the
+// setup wizard (/welcome/setup), which marks completion only once it creates the projects; "Skip"
+// marks it immediately. An already-onboarded user who reaches /welcome by URL is bounced home.
 
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
-import { armCanvasHint, isOnboarded, markOnboarded } from '../onboarding';
+import { isOnboarded, markOnboarded } from '../onboarding';
 import './onboarding.css';
 
 // The four points, in order — a contract is genuinely ordered, hence an <ol>.
@@ -43,11 +44,9 @@ export function OnboardingPage() {
   if (isOnboarded(userId)) return <Navigate to="/" replace />;
 
   function start() {
-    // Mark complete before navigating so the gate won't bounce us back, and arm the canvas hint
-    // that greets the user once the first project exists.
-    markOnboarded(userId);
-    armCanvasHint(userId);
-    navigate('/projects/new?welcome=1');
+    // Hand off to the setup wizard (design screen "03"). We do NOT mark onboarded here — completion
+    // is only earned once the wizard actually creates the projects, so an abandoned run restarts.
+    navigate('/welcome/setup');
   }
 
   function skip() {
@@ -86,7 +85,7 @@ export function OnboardingPage() {
 
         <div className="contract-actions">
           <button type="button" className="contract-cta" onClick={start}>
-            Add your first project
+            Continue
           </button>
           <button type="button" className="contract-skip" onClick={skip}>
             Skip for now

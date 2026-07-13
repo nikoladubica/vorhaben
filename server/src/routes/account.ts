@@ -12,38 +12,66 @@ interface UserRow {
   id: number;
   email: string;
   base_currency: string;
+  track_hours: boolean;
 }
 
 /** Public shape of a user — mirrors auth.ts, never includes password_hash. */
 function publicUser(user: UserRow) {
-  return { id: user.id, email: user.email, base_currency: user.base_currency };
+  return {
+    id: user.id,
+    email: user.email,
+    base_currency: user.base_currency,
+    track_hours: Boolean(user.track_hours),
+  };
 }
 
-// PATCH /api/account — change the caller's base_currency. Existing fx_rates rows are keyed by the
-// base they were entered against and are deliberately left in place: after a base switch they go
-// unused rather than being rewritten, so no historical rate is silently reinterpreted.
+// PATCH /api/account — partial update of the caller's account settings ({ base_currency?,
+// track_hours? }). Only the fields present in the body are applied; at least one must be present.
+// Existing fx_rates rows are keyed by the base they were entered against and are deliberately left
+// in place on a base switch: they go unused rather than being rewritten, so no historical rate is
+// silently reinterpreted.
 accountRouter.patch('/', async (req, res) => {
   const userId = req.userId as number;
-  const body = (req.body ?? {}) as { base_currency?: unknown };
+  const body = (req.body ?? {}) as { base_currency?: unknown; track_hours?: unknown };
 
-  // base_currency: required, trimmed + upper-cased, exactly three A–Z letters. Same 400 shape as
-  // auth.ts's register handler for a missing/non-string value as for a malformed one.
-  if (typeof body.base_currency !== 'string') {
-    res.status(400).json({ error: 'invalid_base_currency' });
+  const update: { base_currency?: string; track_hours?: boolean } = {};
+
+  // base_currency (optional): when present, trimmed + upper-cased, exactly three A–Z letters. Same
+  // 400 shape as auth.ts's register handler for a non-string value as for a malformed one.
+  if (body.base_currency !== undefined) {
+    if (typeof body.base_currency !== 'string') {
+      res.status(400).json({ error: 'invalid_base_currency' });
+      return;
+    }
+    const baseCurrency = body.base_currency.trim().toUpperCase();
+    if (!CURRENCY_RE.test(baseCurrency)) {
+      res.status(400).json({ error: 'invalid_base_currency' });
+      return;
+    }
+    update.base_currency = baseCurrency;
+  }
+
+  // track_hours (optional): when present, must be a boolean.
+  if (body.track_hours !== undefined) {
+    if (typeof body.track_hours !== 'boolean') {
+      res.status(400).json({ error: 'invalid_track_hours' });
+      return;
+    }
+    update.track_hours = body.track_hours;
+  }
+
+  // A no-op PATCH is a client bug, not a valid request.
+  if (Object.keys(update).length === 0) {
+    res.status(400).json({ error: 'no_fields' });
     return;
   }
-  const baseCurrency = body.base_currency.trim().toUpperCase();
-  if (!CURRENCY_RE.test(baseCurrency)) {
-    res.status(400).json({ error: 'invalid_base_currency' });
-    return;
-  }
 
-  await db('users').where({ id: userId }).update({ base_currency: baseCurrency });
+  await db('users').where({ id: userId }).update(update);
 
   // Re-select rather than echo the input, so the response reflects the stored row.
   const user = await db<UserRow>('users')
     .where({ id: userId })
-    .first('id', 'email', 'base_currency');
+    .first('id', 'email', 'base_currency', 'track_hours');
   if (!user) {
     // Token was valid but the user no longer exists.
     res.status(401).json({ error: 'unauthorized' });

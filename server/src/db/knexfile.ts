@@ -17,6 +17,13 @@ const config: Knex.Config = {
     user: env.db.user,
     password: env.db.password,
     database: env.db.database,
+    // The database runs in UTC (the container clock is UTC and CURRENT_TIMESTAMP
+    // stores UTC wall-clock). Without this, mysql2 defaults to 'local' and
+    // reinterprets those UTC datetimes as the Node process's local timezone,
+    // shifting every timestamp by the server's UTC offset on the way out — a
+    // just-created row reads back as "N hours ago". 'Z' makes reads (and writes
+    // of JS Date instants) round-trip as true UTC.
+    timezone: 'Z',
   },
   migrations: {
     directory: path.join(here, 'migrations'),

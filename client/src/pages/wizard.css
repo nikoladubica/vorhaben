@@ -1,0 +1,600 @@
+/* ————— /welcome/setup — the onboarding wizard (design screen "03 — Onboarding") ————— */
+/* Ported faithfully from .claude/design/vorhaben-design.html. Tokens only, square corners,
+   hairline rules, no drop shadows. One earned red: the primary CTA (the selected-control inset
+   rings are the approved 1px-ring pattern from the design source, not elevation). */
+
+.wizard-stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  padding: 40px 20px 56px;
+}
+
+.wizard {
+  width: 100%;
+  max-width: 960px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  min-height: 600px;
+}
+
+/* rail */
+.wiz-rail {
+  background: var(--paper);
+  border-right: 1px solid var(--hairline);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+}
+.wiz-rail .wordmark {
+  margin-bottom: 40px;
+}
+.wiz-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.wstep {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 11px 0;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.wstep + .wstep {
+  border-top: 1px solid var(--hairline);
+}
+.wstep .wn {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--ink-3);
+  align-self: center;
+}
+.wstep.on {
+  color: var(--ink);
+  font-weight: 600;
+}
+.wstep.on .wn {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.wstep.done {
+  color: var(--ink-2);
+}
+.wstep.done .wn {
+  border-color: var(--ink-2);
+  color: var(--ink-2);
+}
+.wiz-rail .rail-foot {
+  margin-top: auto;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  padding-top: 24px;
+}
+.wiz-rail .rail-step-mobile {
+  display: none;
+}
+
+/* main column */
+.wiz-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.wiz-progress {
+  height: 2px;
+  background: var(--grid);
+}
+.wiz-progress i {
+  display: block;
+  height: 2px;
+  background: var(--red);
+  transition: width 240ms ease;
+}
+.wiz-body {
+  padding: 40px 48px 28px;
+  flex: 1;
+  max-width: 720px;
+}
+.wiz-body .stepno {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.wiz-body h3 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 10px 0 6px;
+  text-wrap: balance;
+}
+.wiz-body .lead {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0 0 26px;
+  max-width: 52ch;
+}
+
+/* footer */
+.wiz-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 48px;
+  border-top: 1px solid var(--hairline);
+}
+.wiz-foot .hint {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.wiz-nav {
+  display: flex;
+  gap: 12px;
+}
+.btn {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 12px 26px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 0;
+}
+.btn.primary {
+  background: var(--red);
+  color: #fff;
+}
+.btn.primary:hover {
+  background: var(--red-dark);
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--ink-2);
+  border-color: var(--hairline);
+}
+.btn.ghost:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.btn.sm {
+  padding: 9px 18px;
+  font-size: 13px;
+}
+.btn[disabled] {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* step 1 — type tiles */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.type-tile {
+  position: relative;
+}
+.type-tile input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.type-tile label {
+  display: block;
+  padding: 13px 14px 12px;
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  background: var(--surface);
+  height: 100%;
+}
+.type-tile label:hover {
+  border-color: var(--ink-3);
+}
+.type-tile h5 {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.005em;
+  padding-right: 20px;
+}
+.type-tile p {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+  margin: 4px 0 0;
+}
+.type-tile .tick {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+.type-tile input:checked + label {
+  border-color: var(--red);
+  box-shadow: inset 0 0 0 1px var(--red);
+}
+.type-tile input:checked + label .tick {
+  background: var(--red);
+  border-color: var(--red);
+}
+.type-tile input:checked + label .tick::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 3px;
+  height: 7px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.type-tile input:focus-visible + label {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* step 2 — queue + form */
+.queue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.queue .qchip {
+  font-size: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--hairline);
+  color: var(--ink-3);
+}
+.queue .qchip.on {
+  border-color: var(--red);
+  color: var(--ink);
+  font-weight: 600;
+}
+.queue .qchip.done {
+  color: var(--ink-2);
+  text-decoration: line-through;
+}
+.fgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 20px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.field.full {
+  grid-column: 1 / -1;
+}
+.field > span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.field input[type='text'],
+.field input[type='date'],
+.field input[type='number'],
+.field select,
+.field textarea {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  padding: 11px 12px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+}
+.field select {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2355534f' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.field .aff {
+  display: flex;
+}
+.field .aff b {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--hairline);
+  border-right: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: var(--paper);
+  flex: none;
+}
+.seg {
+  display: flex;
+  flex-wrap: wrap;
+}
+.seg .sopt {
+  position: relative;
+}
+.seg input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.seg label {
+  display: block;
+  font-size: 13px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border: 1px solid var(--hairline);
+  margin-left: -1px;
+  color: var(--ink-2);
+  background: var(--surface);
+}
+.seg .sopt:first-child label {
+  margin-left: 0;
+}
+.seg label:hover {
+  color: var(--ink);
+}
+.seg input:checked + label {
+  border-color: var(--red);
+  box-shadow: inset 0 0 0 1px var(--red);
+  color: var(--ink);
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+.seg input:focus-visible + label {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* step 2 — the quiet "add another of the same type" prompt (worker enhancement) */
+.add-another {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--grid);
+}
+.add-another span {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* step 3 — choice cards */
+.choice-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+}
+.choice {
+  position: relative;
+}
+.choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.choice label {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  background: var(--surface);
+}
+.choice label:hover {
+  border-color: var(--ink-3);
+}
+.choice .radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-3);
+  background: var(--surface);
+  margin-top: 2px;
+}
+.choice h5 {
+  font-size: 14.5px;
+  font-weight: 700;
+  margin: 0;
+}
+.choice h5 small {
+  font-weight: 600;
+  color: var(--red);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-left: 8px;
+}
+.choice p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 5px 0 0;
+}
+.choice input:checked + label {
+  border-color: var(--red);
+  box-shadow: inset 0 0 0 1px var(--red);
+}
+.choice input:checked + label .radio {
+  border: 5px solid var(--red);
+}
+.choice input:focus-visible + label {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* step 4 — review */
+.review {
+  border: 1px solid var(--hairline);
+  max-width: 620px;
+}
+.rrow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 14px 18px;
+  align-items: baseline;
+}
+.rrow + .rrow {
+  border-top: 1px solid var(--grid);
+}
+.rrow .rn {
+  font-size: 14px;
+  font-weight: 600;
+}
+.rrow .rn small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.rrow .rv {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.rrow .rv small {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+  text-align: right;
+  margin-top: 2px;
+}
+.rrow.total {
+  background: var(--paper);
+  border-top: 1px solid var(--hairline);
+}
+.rrow.total .rn {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.11em;
+  color: var(--ink-2);
+}
+.rrow.total .rv {
+  font-size: 18px;
+}
+.wiz-done-note {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 18px;
+  max-width: 52ch;
+  line-height: 1.55;
+}
+
+/* finish error — neutral (red stays earned for the CTA): hairline box, ink label */
+.wiz-error {
+  margin-top: 20px;
+  max-width: 620px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  padding: 14px 16px;
+}
+.wiz-error b {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+.wiz-error p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+/* responsive — rail collapses to a top strip; no horizontal scroll at any width */
+@media (max-width: 760px) {
+  .wizard {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .wiz-rail {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .wiz-rail .wordmark {
+    margin-bottom: 0;
+  }
+  .wiz-steps,
+  .wiz-rail .rail-foot {
+    display: none;
+  }
+  .wiz-rail .rail-step-mobile {
+    display: block;
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .wiz-body {
+    padding: 26px 18px 20px;
+  }
+  .wiz-foot {
+    padding: 14px 18px;
+  }
+  .type-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 440px) {
+  .type-grid {
+    grid-template-columns: 1fr;
+  }
+}
