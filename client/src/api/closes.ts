@@ -23,12 +23,14 @@ export interface CloseProject {
 
 // The banner + Close-page state. `period` is the current ISO week ("2026-W28"); `closed` is whether
 // a completion row exists for it; `close_day` is the user's preference (0 = Sunday … 6 = Saturday);
-// `in_window` is whether today's weekday has reached the close day AND the week is not yet closed
-// (the banner shows during this window).
+// `week_start` is the first day of the user's week (0 = Sunday, 1 = Monday), which defines the
+// tracked week; `in_window` is whether today has reached the close day within that week AND the
+// week is not yet closed (the banner shows during this window).
 export interface CloseCurrent {
   period: string;
   closed: boolean;
   close_day: number;
+  week_start: number;
   in_window: boolean;
   base_currency: string;
   projects: CloseProject[];
@@ -58,4 +60,17 @@ export function recordClose(period: string): Promise<WeeklyClose> {
 // value yields a 422 ApiError with fields.close_day = 'invalid'.
 export function updateCloseDay(closeDay: number): Promise<{ close_day: number }> {
   return api.patch<{ close_day: number }>('/closes/settings', { close_day: closeDay });
+}
+
+// PATCH /api/closes/settings — persist the first-day-of-week preference (0 = Sunday, 1 = Monday).
+// The endpoint requires close_day too, so we send the current value alongside week_start. A bad
+// value yields a 422 ApiError with fields.week_start = 'invalid'.
+export function updateWeekStart(
+  weekStart: number,
+  closeDay: number,
+): Promise<{ close_day: number; week_start: number }> {
+  return api.patch<{ close_day: number; week_start: number }>('/closes/settings', {
+    close_day: closeDay,
+    week_start: weekStart,
+  });
 }

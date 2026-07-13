@@ -32,8 +32,8 @@ const MS_PER_WEEK = 7 * 86_400_000;
 
 interface WeekInfo {
   period: string; // "YYYY-Www", zero-padded
-  monday: string; // 'YYYY-MM-DD' — first day of the ISO week
-  sunday: string; // 'YYYY-MM-DD' — last day of the ISO week
+  start: string; // 'YYYY-MM-DD' — first day of the user's week (Monday or Sunday per week_start)
+  end: string; // 'YYYY-MM-DD' — last day of the user's week
   weekday: number; // reference day's weekday, 0 = Sunday … 6 = Saturday (matches close_day)
 }
 
@@ -46,31 +46,42 @@ function ymd(d: Date): string {
 }
 
 /**
- * Derive the ISO week `wall` falls in, plus that week's Monday/Sunday date bounds. `wall` is a
+ * Derive the user's week that `wall` falls in, plus that week's first/last day bounds. `wall` is a
  * Date whose UTC components equal the user's wall-clock date/time (built by shifting NOW() by the
  * tz offset), so all calendar math here uses the UTC getters and stays DST-free.
+ *
+ * `weekStart` is the user's first day of week (0 = Sunday, 1 = Monday). The window bounds shift
+ * with it, but the `"YYYY-Www"` period key stays anchored on the Monday inside the window, so the
+ * key format is unchanged and Monday-start (weekStart = 1) output is byte-for-byte identical to the
+ * previous ISO-8601-only implementation.
  */
-function isoWeekInfo(wall: Date): WeekInfo {
+function isoWeekInfo(wall: Date, weekStart: number): WeekInfo {
   // Weekday for the close-day comparison uses the wall clock directly (0 = Sun … 6 = Sat).
   const weekday = wall.getUTCDay();
   // Pure-date copy at UTC midnight.
   const date = new Date(Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate()));
-  // Monday-start day index: Mon = 0 … Sun = 6.
-  const isoDow = (date.getUTCDay() + 6) % 7;
+  // Position of `date` within the user's week: 0 = first day … 6 = last day.
+  const dow = (date.getUTCDay() - weekStart + 7) % 7;
 
-  // Monday and Sunday of this week.
-  const monday = new Date(date);
-  monday.setUTCDate(date.getUTCDate() - isoDow);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
+  // First and last day of the user's week.
+  const start = new Date(date);
+  start.setUTCDate(date.getUTCDate() - dow);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
 
-  // The Thursday of this week decides the ISO year (and thus which year's week 1 to count from).
-  const thursday = new Date(date);
-  thursday.setUTCDate(date.getUTCDate() - isoDow + 3);
+  // The Monday inside this window uniquely identifies an ISO-8601 week and anchors the period key
+  // (unchanged format). For a Monday-start week that Monday is the window's start day; for a
+  // Sunday-start week it is start + 1 day.
+  const monday = new Date(start);
+  if (weekStart === 0) monday.setUTCDate(start.getUTCDate() + 1);
+
+  // The Thursday of the ISO week decides the ISO year (and thus which year's week 1 to count from).
+  const thursday = new Date(monday);
+  thursday.setUTCDate(monday.getUTCDate() + 3);
   const isoYear = thursday.getUTCFullYear();
 
   // Week 1 is the week containing Jan 4 (equivalently the year's first Thursday). Count whole
-  // weeks between this week's Monday and week 1's Monday.
+  // weeks between this ISO week's Monday and week 1's Monday.
   const jan4 = new Date(Date.UTC(isoYear, 0, 4));
   const jan4Dow = (jan4.getUTCDay() + 6) % 7;
   const week1Monday = new Date(jan4);
@@ -79,8 +90,8 @@ function isoWeekInfo(wall: Date): WeekInfo {
 
   return {
     period: `${isoYear}-W${String(week).padStart(2, '0')}`,
-    monday: ymd(monday),
-    sunday: ymd(sunday),
+    start: ymd(start),
+    end: ymd(end),
     weekday,
   };
 }
@@ -120,6 +131,7 @@ interface CurrentResponse {
   period: string;
   closed: boolean;
   close_day: number;
+  week_start: number;
   in_window: boolean;
   base_currency: string;
   projects: CurrentProject[];
@@ -129,17 +141,23 @@ closesRouter.get('/current', async (req, res) => {
   const userId = req.userId as number;
   const tz = parseTzOffset(req.query.tz);
 
-  // Resolve "now" in the user's wall clock, then the ISO week it belongs to. "This week" is that
-  // week's Monday..Sunday date range.
-  const wall = new Date(Date.now() + tz * 60_000);
-  const { period, monday, sunday, weekday } = isoWeekInfo(wall);
-
-  // User row: base currency (for conversion) + close-day preference.
+  // User row: base currency (for conversion) + close-day and week-start preferences.
   const user = await db('users')
     .where('id', userId)
-    .first<{ base_currency: string; close_day: number } | undefined>('base_currency', 'close_day');
+    .first<{ base_currency: string; close_day: number; week_start: number } | undefined>(
+      'base_currency',
+      'close_day',
+      'week_start',
+    );
   const baseCurrency = user?.base_currency ?? 'EUR';
   const closeDay = Number(user?.close_day ?? 0);
+  // 0 = Sunday, 1 = Monday. Anything else falls back to the Monday default.
+  const weekStart = Number(user?.week_start) === 0 ? 0 : 1;
+
+  // Resolve "now" in the user's wall clock, then the week it belongs to. "This week" is that week's
+  // first-day..last-day date range, which shifts with week_start.
+  const wall = new Date(Date.now() + tz * 60_000);
+  const { period, start, end, weekday } = isoWeekInfo(wall, weekStart);
 
   // Is this week already closed? A live weekly_closes row for (user, period).
   const closeRow = await db('weekly_closes')
@@ -148,9 +166,14 @@ closesRouter.get('/current', async (req, res) => {
     .first('id');
   const closed = !!closeRow;
 
-  // The banner window is open once today's weekday has reached the close day — but never while the
-  // week is already closed.
-  const inWindow = weekday >= closeDay && !closed;
+  // The banner window is open once today has reached the close day within the user's week — but
+  // never while the week is already closed. Both days are mapped to their position within the
+  // user's week (0 = first day … 6 = last day) before comparing; comparing these positions rather
+  // than raw Sunday-indexed numbers is what fixes the "banner opens every day" bug and makes the
+  // gate correct for any week_start / close_day pairing.
+  const currentPos = (weekday - weekStart + 7) % 7;
+  const closePos = (closeDay - weekStart + 7) % 7;
+  const inWindow = currentPos >= closePos && !closed;
 
   // Active, non-deleted projects only (paused/ended/idea are out of the walk, per §2.5), ordered
   // by name for a stable walk order.
@@ -165,6 +188,7 @@ closesRouter.get('/current', async (req, res) => {
       period,
       closed,
       close_day: closeDay,
+      week_start: weekStart,
       in_window: inWindow,
       base_currency: baseCurrency,
       projects: [],
@@ -181,8 +205,8 @@ closesRouter.get('/current', async (req, res) => {
   // project set already scoped to this user above.
   const hourRows = await db('time_logs')
     .whereIn('project_id', projectIds)
-    .andWhere('date', '>=', monday)
-    .andWhere('date', '<=', sunday)
+    .andWhere('date', '>=', start)
+    .andWhere('date', '<=', end)
     .groupBy('project_id')
     .select<Array<{ project_id: number; hours: string }>>(
       'project_id',
@@ -199,8 +223,8 @@ closesRouter.get('/current', async (req, res) => {
   // one rate load.
   const incomeRows = await db('income_entries')
     .whereIn('project_id', projectIds)
-    .andWhere('date', '>=', monday)
-    .andWhere('date', '<=', sunday)
+    .andWhere('date', '>=', start)
+    .andWhere('date', '<=', end)
     .select<Array<{ project_id: number; date: string; amount: string; currency: string }>>(
       'project_id',
       db.raw("DATE_FORMAT(date, '%Y-%m-%d') as date"),
@@ -221,7 +245,7 @@ closesRouter.get('/current', async (req, res) => {
     .where('user_id', userId)
     .whereIn('project_id', projectIds)
     .whereNull('deleted_at')
-    .whereRaw('DATE(created_at + INTERVAL ? MINUTE) BETWEEN ? AND ?', [tz, monday, sunday])
+    .whereRaw('DATE(created_at + INTERVAL ? MINUTE) BETWEEN ? AND ?', [tz, start, end])
     .groupBy('project_id')
     .select<Array<{ project_id: number; c: number }>>('project_id', db.raw('COUNT(*) as c'));
   const moodByProject = new Map<number, number>();
@@ -241,6 +265,7 @@ closesRouter.get('/current', async (req, res) => {
     period,
     closed,
     close_day: closeDay,
+    week_start: weekStart,
     in_window: inWindow,
     base_currency: baseCurrency,
     projects: projectSummaries,
@@ -312,7 +337,7 @@ closesRouter.post('/', async (req, res) => {
 // id is always req.userId.
 closesRouter.patch('/settings', async (req, res) => {
   const userId = req.userId as number;
-  const body = (req.body ?? {}) as { close_day?: unknown };
+  const body = (req.body ?? {}) as { close_day?: unknown; week_start?: unknown };
 
   // close_day: required integer 0-6 (0 = Sunday … 6 = Saturday).
   if (
@@ -326,6 +351,20 @@ closesRouter.patch('/settings', async (req, res) => {
   }
   const closeDay = body.close_day;
 
-  await db('users').where('id', userId).update({ close_day: closeDay });
-  res.json({ close_day: closeDay });
+  // week_start: optional, but when present must be exactly 0 (Sunday) or 1 (Monday). It is stored
+  // as-is and never auto-mutates close_day (they are independent preferences).
+  let weekStart: number | undefined;
+  if (body.week_start !== undefined) {
+    if (body.week_start !== 0 && body.week_start !== 1) {
+      res.status(422).json({ error: 'validation', fields: { week_start: 'invalid' } });
+      return;
+    }
+    weekStart = body.week_start;
+  }
+
+  const patch: { close_day: number; week_start?: number } = { close_day: closeDay };
+  if (weekStart !== undefined) patch.week_start = weekStart;
+
+  await db('users').where('id', userId).update(patch);
+  res.json(patch);
 });

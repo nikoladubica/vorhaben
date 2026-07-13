@@ -1,10 +1,12 @@
-/* Weekly-close banner (ticket 04 / §2.5). Sibling of .mood-nudge — same hairline register, square
-   corners, no shadow, no red, no animation. One quiet line + a link, dismissible for the day.
-   Never renders alongside .mood-nudge (WeeklyRitual picks one). */
+/* Weekly-close banner (ticket 04 / §2.5; prominence set in ticket 19). Sibling of .mood-nudge —
+   same square corners, no shadow, no animation. Paper-tint panel with a 2px red top rule (a focus
+   rule — the one earned accent per the design system), then one quiet line + a link, dismissible
+   for the day. Never renders alongside .mood-nudge (WeeklyRitual picks one). */
 .close-banner {
   position: relative;
   border: 1px solid var(--hairline);
-  background: var(--surface);
+  border-top: 2px solid var(--red); /* focus rule — the single earned accent (ticket 19) */
+  background: var(--paper);
   padding: 14px 20px;
   margin-bottom: 20px;
   display: flex;
@@ -28,7 +30,7 @@
   cursor: pointer;
 }
 .close-banner-link:hover {
-  border-bottom-color: var(--ink); /* deliberately NOT red — the banner earns no accent */
+  border-bottom-color: var(--ink); /* the accent lives in the top rule; the link stays ink */
 }
 .close-banner-link:focus-visible {
   outline: 2px solid var(--ink);
