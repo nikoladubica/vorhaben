@@ -281,6 +281,207 @@ async function resolveExportProjectFilter(
   return { ok: true, projectId };
 }
 
+// ---------------------------------------------------------------------------
+// Starter files — the import templates and the project-id reference
+// ---------------------------------------------------------------------------
+
+// A template is a ready-to-fill file for one importable table: the header row the importer expects
+// (writable columns only — never id/created_at, which the server assigns) plus example rows that are
+// valid as written. Every example labels itself as one in the table's free-text column, so a user who
+// forgets to clear it sees that text in the dry-run report and on whatever row it creates — a
+// left-behind example is loud and reversible, never a silent fake project.
+interface ImportTemplate {
+  // A function, not a constant, because the income-entries shape depends on the target: a targeted
+  // import (?project) drops the project columns entirely, since every row already belongs to that
+  // project and naming a different one is an error.
+  columns: (targetProjectId?: number) => readonly string[];
+  // Async because the income-entries examples are seeded from the user's own projects: the template
+  // arrives carrying real project ids, so it validates on the first try instead of sending the user
+  // off to look one up.
+  build: (userId: number, targetProjectId?: number) => Promise<Array<Record<string, unknown>>>;
+}
+
+const EXAMPLE_LABEL = 'Example — replace this row';
+
+const IMPORT_TEMPLATES: Record<string, ImportTemplate> = {
+  projects: {
+    columns: () => [
+      'name',
+      'type',
+      'description',
+      'status',
+      'start_date',
+      'end_date',
+      'compensation_model',
+      'rate_amount',
+      'rate_currency',
+    ],
+    build: async (userId) => {
+      const user = (await db('users').where('id', userId).first('base_currency')) as {
+        base_currency: string;
+      };
+      const currency = user.base_currency;
+      return [
+        {
+          name: `${EXAMPLE_LABEL} — your day job`,
+          type: 'job',
+          description: 'What this work is, in your own words.',
+          status: 'active',
+          start_date: '2026-01-01',
+          end_date: '',
+          compensation_model: 'salary_monthly',
+          rate_amount: '6500.00',
+          rate_currency: currency,
+        },
+        {
+          name: `${EXAMPLE_LABEL} — a freelance client`,
+          type: 'freelance_client',
+          description: '',
+          status: 'active',
+          start_date: '2026-03-15',
+          end_date: '',
+          compensation_model: 'hourly',
+          rate_amount: '85.00',
+          rate_currency: currency,
+        },
+      ];
+    },
+  },
+  'income-entries': {
+    // Untargeted, the file must say which project each row belongs to; targeted, it must not, so the
+    // template hands back exactly the bare `date,amount,…` sheet that mode expects.
+    columns: (targetProjectId) =>
+      targetProjectId === undefined
+        ? ['project_id', 'project_name', 'date', 'amount', 'currency', 'note']
+        : ['date', 'amount', 'currency', 'note'],
+    build: async (userId, targetProjectId) => {
+      const user = (await db('users').where('id', userId).first('base_currency')) as {
+        base_currency: string;
+      };
+      // Seed the examples from real projects: the target when there is one, otherwise the two oldest
+      // live projects (a soft-deleted project cannot be imported into, so it is never offered).
+      const q = db('projects').where('user_id', userId).whereNull('deleted_at').orderBy('id');
+      if (targetProjectId !== undefined) q.where('id', targetProjectId);
+      const projects = (await q.limit(2).select('id', 'name', 'rate_currency')) as Array<{
+        id: number;
+        name: string;
+        rate_currency: string | null;
+      }>;
+
+      // No projects at all — nothing to point a row at. Say so in the file itself; projects have to
+      // be imported first either way. (Unreachable when targeted: the route verified the target.)
+      if (projects.length === 0) {
+        return [
+          {
+            project_id: '',
+            project_name: 'Import your projects first, then name one here',
+            date: todayString(),
+            amount: '1200.00',
+            currency: user.base_currency,
+            note: EXAMPLE_LABEL,
+          },
+        ];
+      }
+
+      // Untargeted rows carry BOTH project_id and project_name, so it reads as obvious that either
+      // one identifies the project. Amounts differ per row so two examples never dedup into one.
+      return projects.map((p, i) => ({
+        project_id: p.id,
+        project_name: p.name,
+        date: todayString(),
+        amount: i === 0 ? '1200.00' : '850.00',
+        currency: p.rate_currency ?? user.base_currency,
+        note: EXAMPLE_LABEL,
+      }));
+    },
+  },
+};
+
+// GET /api/export/template/:table.(csv|xlsx) — the fill-in-the-blanks starter file for an import.
+// A two-segment path, so it can never be shadowed by /:table.csv. An optional ?project=<id> mirrors
+// the import route's targeted mode (income-entries only): same target, same accepted columns, so the
+// template a user downloads is always the one the importer they are about to run wants.
+exportRouter.get('/template/:table.:format(csv|xlsx)', async (req, res) => {
+  const userId = req.userId as number;
+  // Express types a param that sits beside a regex-constrained one as possibly-undefined; the route
+  // cannot match without it, so an empty fallback just satisfies the compiler (and 404s regardless).
+  const table = req.params.table ?? '';
+  const spec = IMPORT_TEMPLATES[table];
+  if (!spec) {
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
+
+  let targetProjectId: number | undefined;
+  const targetRaw = typeof req.query.project === 'string' ? req.query.project : undefined;
+  if (targetRaw !== undefined && targetRaw !== '') {
+    if (table !== 'income-entries') {
+      res.status(400).json({
+        error: 'project_target_unsupported',
+        message: `?project is not valid for the "${table}" template`,
+      });
+      return;
+    }
+    const pid = Number(targetRaw);
+    if (!Number.isInteger(pid) || pid <= 0) {
+      res
+        .status(400)
+        .json({ error: 'invalid_project', message: 'project must be a positive integer id' });
+      return;
+    }
+    if (!(await ownsProject(userId, pid, false))) {
+      res.status(404).json({ error: 'not_found', message: 'project not found' });
+      return;
+    }
+    targetProjectId = pid;
+  }
+
+  const columns = spec.columns(targetProjectId);
+  const rows = await spec.build(userId, targetProjectId);
+  const label = `${table}-template`;
+
+  if (req.params.format === 'xlsx') {
+    const buffer = await serializeXlsxWorkbook([{ name: table, columns, rows }]);
+    sendXlsx(res, label, buffer);
+    return;
+  }
+
+  const filename = `vorhaben-${label}-${todayString()}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(serializeCsv(columns, rows));
+});
+
+// GET /api/export/project-ids.(csv|xlsx) — the companion reference for an income-entries import: the
+// user's live projects and the ids to key rows against. Deliberately NOT an EXPORT_TABLES entry — it
+// is a slim lookup, not a table (the full `projects` export already covers that), so it must be
+// registered before the generic /:table routes, which would otherwise 404 on this name.
+const PROJECT_ID_COLUMNS = ['id', 'name', 'type', 'status', 'rate_currency'] as const;
+
+exportRouter.get('/project-ids.:format(csv|xlsx)', async (req, res) => {
+  const userId = req.userId as number;
+  // Soft-deleted projects are excluded on purpose: an import cannot target one, so listing its id
+  // here would only invite a row that fails validation.
+  const rows = await db('projects')
+    .where('user_id', userId)
+    .whereNull('deleted_at')
+    .orderBy('id')
+    .select(...PROJECT_ID_COLUMNS);
+
+  if (req.params.format === 'xlsx') {
+    const buffer = await serializeXlsxWorkbook([
+      { name: 'projects', columns: PROJECT_ID_COLUMNS, rows },
+    ]);
+    sendXlsx(res, 'project-ids', buffer);
+    return;
+  }
+
+  const filename = `vorhaben-project-ids-${todayString()}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(serializeCsv(PROJECT_ID_COLUMNS, rows));
+});
+
 // GET /api/export/:table.csv — stream one table's rows as an attachment. The `.csv` suffix keeps
 // the download named correctly and the route unambiguous; `:table` is validated against the map. An
 // optional ?project=<id> narrows a child table to one owned project (see resolveExportProjectFilter).
