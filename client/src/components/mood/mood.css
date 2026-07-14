@@ -132,6 +132,37 @@
   color: var(--ink-2);
   white-space: nowrap;
 }
+/* The project up next carries the one red mark in the bar (red is earned: it points at the single
+   thing to do). The others hold the same 5px of space so the row doesn't shift as they drop out. */
+.mood-nudge-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: transparent;
+}
+.mood-nudge-item.is-next .mood-nudge-dot {
+  background: var(--red);
+  animation: mood-nudge-blink 1.6s ease-in-out infinite;
+}
+.mood-nudge-item.is-next .mood-nudge-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+@keyframes mood-nudge-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mood-nudge-item.is-next .mood-nudge-dot {
+    animation: none;
+  }
+}
 .mood-nudge-x {
   position: absolute;
   top: 8px;

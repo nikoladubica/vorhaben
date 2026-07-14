@@ -34,10 +34,16 @@ export function logProjectMood(
   return api.post<MoodEvent>(`/projects/${projectId}/moods`, body);
 }
 
-// Whether ANY live mood event exists today for the user — feeds the daily nudge (which shows only
-// when `logged` is false). The `tz` param is a signed minute offset from UTC so "today" matches the
+// What the user has logged today — feeds the daily nudge. `logged` is true when any live mood event
+// exists today; `projectIds` names the projects already covered, so the nudge can ask only about the
+// ones still outstanding. The `tz` param is a signed minute offset from UTC so "today" matches the
 // user's wall clock rather than server time.
-export function getMoodToday(): Promise<{ logged: boolean }> {
+export interface MoodToday {
+  logged: boolean;
+  projectIds: number[];
+}
+
+export function getMoodToday(): Promise<MoodToday> {
   const tz = new Date().getTimezoneOffset() * -1;
-  return api.get<{ logged: boolean }>(`/moods/today?tz=${tz}`);
+  return api.get<MoodToday>(`/moods/today?tz=${tz}`);
 }

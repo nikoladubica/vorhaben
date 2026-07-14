@@ -151,10 +151,11 @@ projectMoodsRouter.post('/:id/moods', async (req, res) => {
 // Flat routes: /api/moods
 // ---------------------------------------------------------------------------
 
-// GET /api/moods/today?tz= — whether the user has logged ANY live mood event today. Feeds the daily
-// nudge (which shows only when logged=false). `tz` is an optional signed minute offset from UTC
-// (e.g. 120 for UTC+2) so "today" matches the user's wall clock; omitted → server date (v1
-// acceptable per the ticket). Clamped to a real-world range.
+// GET /api/moods/today?tz= — what the user has logged today. `logged` is true when ANY live mood
+// event exists today; `projectIds` lists the projects already covered, so the daily nudge can walk
+// the remaining ones one at a time instead of settling the whole bar on the first entry. `tz` is an
+// optional signed minute offset from UTC (e.g. 120 for UTC+2) so "today" matches the user's wall
+// clock; omitted → server date (v1 acceptable per the ticket). Clamped to a real-world range.
 const MAX_TZ_OFFSET = 14 * 60; // +14:00, the largest real offset
 
 function parseTzOffset(raw: unknown): number {
@@ -171,11 +172,12 @@ moodsRouter.get('/today', async (req, res) => {
   // Compare the local calendar date of each event's created_at against the local calendar date of
   // now, both shifted by the same offset — done in the DB so it is one indexed scan and free of
   // app/DB clock skew.
-  const row = await db('mood_events')
+  const rows = await db('mood_events')
     .where('user_id', userId)
     .whereNull('deleted_at')
     .whereRaw('DATE(created_at + INTERVAL ? MINUTE) = DATE(NOW() + INTERVAL ? MINUTE)', [tz, tz])
-    .first(db.raw('1 as present'));
+    .distinct('project_id');
 
-  res.json({ logged: !!row });
+  const projectIds = rows.map((r: { project_id: number }) => r.project_id);
+  res.json({ logged: projectIds.length > 0, projectIds });
 });
