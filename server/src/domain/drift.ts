@@ -103,7 +103,11 @@ export function evaluateFeelingDrift(
   };
 }
 
-function feelingDriftSentence(name: string, framing: DriftFraming, bottomRateHalf: boolean): string {
+function feelingDriftSentence(
+  name: string,
+  framing: DriftFraming,
+  bottomRateHalf: boolean,
+): string {
   // The rate pairing clause — included only when the project is in the bottom rate half.
   const rate = bottomRateHalf ? ' while it earns one of your lowest hourly rates' : '';
 
@@ -121,25 +125,38 @@ function feelingDriftSentence(name: string, framing: DriftFraming, bottomRateHal
 
 export interface AttentionDriftInput {
   name: string;
-  // The latest of (last time log, last income entry, last mood event), falling back to the project's
-  // created_at so a never-touched project still has a reference point. The assembler resolves it.
+  // The latest of (last time log, last income entry, last FEELING or TREND event), falling back to
+  // the project's created_at so a never-touched project still has a reference point. Explicit
+  // "didn't touch it" events are NOT activity and never move this — answering "didn't touch it" is
+  // not touching it (ticket 26). The assembler resolves it.
   lastActivityAt: Date;
   asOf: Date;
+  // How many times the user has explicitly confirmed "didn't touch it" since that last real
+  // activity — user-confirmed corroboration of the drift, named in the copy when present (ticket 26).
+  // Defaults to 0 (silent). Corroborating evidence only: it never advances or resets the clock.
+  untouchedConfirmations?: number;
 }
 
 /**
  * Attention drift: an active project untouched for ATTENTION_DRIFT_DAYS. Always offers the
  * guilt-free ending and reassures that history is kept. Returns null while still inside the window.
+ * When the user has explicitly confirmed "didn't touch it" one or more times during the dormancy,
+ * the copy names that — it is their own confirmation, a stronger prompt than silence.
  */
 export function evaluateAttentionDrift(input: AttentionDriftInput): DriftFinding | null {
   const days = (input.asOf.getTime() - input.lastActivityAt.getTime()) / DAY_MS;
   if (days < ATTENTION_DRIFT_DAYS) return null;
 
   const weeks = Math.max(1, Math.round(days / 7));
+  const confirmations = input.untouchedConfirmations ?? 0;
+  const confirmClause =
+    confirmations > 0
+      ? ` — and you've said as much ${confirmations === 1 ? 'once' : `${confirmations} times`}`
+      : '';
   return {
     kind: 'attention_drift',
     sentence:
-      `You haven't touched ${input.name} in ${weeks} weeks. ` +
+      `You haven't touched ${input.name} in ${weeks} weeks${confirmClause}. ` +
       `End it guilt-free? It stays in your history.`,
   };
 }
@@ -223,7 +240,10 @@ interface ActiveProjectRow {
  *
  * @param asOf reference "now"; every window (streak, 45-day, ISO week) is measured back from here.
  */
-export async function buildNudgesForUser(userId: number, asOf: Date = new Date()): Promise<Nudge[]> {
+export async function buildNudgesForUser(
+  userId: number,
+  asOf: Date = new Date(),
+): Promise<Nudge[]> {
   // 1. Active, non-deleted projects only. Paused is exempt (pausing IS the user's answer — §2.7
   //    open question 2, V1); ended/idea are not active. Scoped by user_id.
   const projects = await db('projects')
@@ -235,27 +255,33 @@ export async function buildNudgesForUser(userId: number, asOf: Date = new Date()
 
   const projectIds = projects.map((p) => p.id);
 
-  // 2. Mood streams (feeling drift), oldest first — one grouped query, user-scoped.
+  // 2. Mood streams, oldest first — one grouped query carrying the kind discriminator, user-scoped.
+  //    Feeling drift analyzes only kind='feeling' (values map onto valence/energy; trend/untouched
+  //    do not). Legacy-valued rows are kind='feeling', so they still feed the analysis (ticket 26).
   const eventRows = await db('mood_events')
     .where('user_id', userId)
     .whereIn('project_id', projectIds)
     .whereNull('deleted_at')
     .orderBy('created_at', 'asc')
     .orderBy('id', 'asc')
-    .select<Array<{ project_id: number; value: Feeling | null; created_at: Date }>>(
+    .select<Array<{ project_id: number; value: Feeling | null; created_at: Date; kind: string }>>(
       'project_id',
       'value',
       'created_at',
+      'kind',
     );
   const streamByProject = new Map<number, MoodEventInput[]>();
   for (const row of eventRows) {
+    if (row.kind !== 'feeling') continue;
     const stream = streamByProject.get(row.project_id) ?? [];
     stream.push({ value: row.value, at: new Date(row.created_at) });
     streamByProject.set(row.project_id, stream);
   }
 
   // 3. Last activity per project (attention drift): the latest of last time log, last income entry
-  //    and last mood event, falling back to the project's created_at. The project set is already
+  //    and last ENGAGEMENT mood event (feeling or trend), falling back to the project's created_at.
+  //    An explicit 'untouched' event is deliberately NOT activity — answering "didn't touch it" is
+  //    not touching it, so it never moves this clock (ticket 26). The project set is already
   //    user-scoped, so the two aggregate queries filter by project id (mirrors routes/closes.ts).
   const lastActivity = new Map<number, Date>();
   const bump = (projectId: number, at: Date) => {
@@ -263,7 +289,10 @@ export async function buildNudgesForUser(userId: number, asOf: Date = new Date()
     if (!current || at.getTime() > current.getTime()) lastActivity.set(projectId, at);
   };
   for (const p of projects) bump(p.id, new Date(p.created_at));
-  for (const row of eventRows) bump(row.project_id, new Date(row.created_at));
+  for (const row of eventRows) {
+    if (row.kind === 'feeling' || row.kind === 'trend')
+      bump(row.project_id, new Date(row.created_at));
+  }
 
   const dateRows = await Promise.all(
     (['time_logs', 'income_entries'] as const).map((tbl) =>
@@ -279,6 +308,21 @@ export async function buildNudgesForUser(userId: number, asOf: Date = new Date()
   for (const rows of dateRows) {
     for (const row of rows) {
       if (row.last_date) bump(row.project_id, new Date(`${row.last_date}T00:00:00Z`));
+    }
+  }
+
+  // 3b. Untouched confirmations per project: explicit 'untouched' events recorded AFTER the last
+  //     real activity — the user's own corroboration of the drift, named in the nudge copy. Counted
+  //     here (once lastActivity is fully resolved) purely as evidence; it never resets the clock.
+  const untouchedConfirmations = new Map<number, number>();
+  for (const row of eventRows) {
+    if (row.kind !== 'untouched') continue;
+    const anchor = lastActivity.get(row.project_id);
+    if (anchor && new Date(row.created_at).getTime() > anchor.getTime()) {
+      untouchedConfirmations.set(
+        row.project_id,
+        (untouchedConfirmations.get(row.project_id) ?? 0) + 1,
+      );
     }
   }
 
@@ -327,6 +371,7 @@ export async function buildNudgesForUser(userId: number, asOf: Date = new Date()
       name: p.name,
       lastActivityAt: lastActivity.get(p.id) ?? new Date(p.created_at),
       asOf,
+      untouchedConfirmations: untouchedConfirmations.get(p.id) ?? 0,
     });
     if (attention) findings.push(attention);
 

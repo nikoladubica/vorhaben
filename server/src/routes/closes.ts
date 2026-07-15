@@ -240,7 +240,9 @@ closesRouter.get('/current', async (req, res) => {
   }
 
   // Mood events this week: live events whose wall-clock created_at date (tz-shifted, same as
-  // /moods/today) lands in the week. One grouped count.
+  // /moods/today) lands in the week. One grouped count. This is a check-in ACTIVITY count (did the
+  // user address the project this week?), so ALL kinds count — a feeling, a trend, or an explicit
+  // "didn't touch it" all mean the project was addressed (ticket 26). No kind filter on purpose.
   const moodRows = await db('mood_events')
     .where('user_id', userId)
     .whereIn('project_id', projectIds)

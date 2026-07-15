@@ -87,10 +87,13 @@ export async function buildMatrixForUser(userId: number): Promise<MatrixPayload>
 
   const projectIds = projects.map((p) => p.id);
 
-  // 3. Every live mood event for those projects, oldest first — one grouped query, scoped by
-  //    user_id as defence in depth on top of the project set (mirrors signals.ts).
+  // 3. Every live FEELING event for those projects, oldest first — one grouped query, scoped by
+  //    user_id as defence in depth on top of the project set (mirrors signals.ts). Scoped to
+  //    kind='feeling' because analyzeMood interprets values as feelings; trend/untouched rows are a
+  //    different question and must not enter the matrix's Y axis (ticket 26). Legacy-valued rows are
+  //    kind='feeling', so they still contribute exactly as before.
   const eventRows = await db('mood_events')
-    .where('user_id', userId)
+    .where({ user_id: userId, kind: 'feeling' })
     .whereIn('project_id', projectIds)
     .whereNull('deleted_at')
     .orderBy('created_at', 'asc')

@@ -21,20 +21,26 @@
 // values (trend_score travels in the API for the future Worth-It Matrix, but the UI renders
 // sentences and words only).
 
-import type { Feeling } from './constants.js';
+import type { Feeling, Trend } from './constants.js';
 
-// --- The two-axis feeling map (breaktrough.md §2.4 table) ------------------
+// --- The two-axis feeling map (breaktrough.md §2.4 table; ticket 26 adds `fine`) -----------
+//
+// The six WRITABLE feelings plus the three LEGACY ones (grateful/opportunistic/pessimistic), which
+// are retired from writes but still appear on historic rows and MUST keep scoring exactly as before
+// — history is the product. `fine` (0, 0) is the neutral steady state the old list was missing.
 
 // Valence: feels good (+2) ↔ feels bad (−2). Drives direction, streaks, swings, trend_score.
 const VALENCE: Record<Feeling, number> = {
   excited: 2,
   happy: 2,
-  grateful: 2,
-  opportunistic: 1,
-  pessimistic: -1,
+  fine: 0,
   stressed: -1,
   sad: -2,
   miserable: -2,
+  // Legacy (read-only) — kept at their ticket-02 values so past events read unchanged.
+  grateful: 2,
+  opportunistic: 1,
+  pessimistic: -1,
 };
 
 /**
@@ -55,12 +61,27 @@ export function valenceOf(feeling: Feeling | null): number | null {
 const ENERGY: Record<Feeling, number> = {
   excited: 2,
   happy: 1,
-  grateful: 0,
-  opportunistic: 2,
-  pessimistic: -1,
+  fine: 0,
   stressed: 1,
   sad: -1,
   miserable: -2,
+  // Legacy (read-only) — unchanged ticket-02 values.
+  grateful: 0,
+  opportunistic: 2,
+  pessimistic: -1,
+};
+
+// --- The one-axis TREND map (ticket 26) ------------------------------------
+//
+// The self-reported "how is it going?" answer, on a single good↔bad axis (there is no energy
+// distinction for a trajectory word). Internal numbers, never user-visible — used only to give the
+// trend stream a DIRECTION for the divergence heuristic below.
+const TREND_POINTS: Record<Trend, number> = {
+  thriving: 2,
+  good: 1,
+  stable: 0,
+  bad: -1,
+  failing: -2,
 };
 
 // --- Named thresholds (each explainable in one sentence, per §2.3) ---------
@@ -219,7 +240,13 @@ function splitAxis(
   asOf: Date,
   axis: Record<Feeling, number>,
 ): AxisSplit | null {
-  const valued = valuedOn(events, axis);
+  return splitValued(valuedOn(events, axis), asOf);
+}
+
+// The window split over already-scored readings — shared by the feeling axes (splitAxis) and the
+// trend stream (analyzeTrendDirection), so both use the identical last-7 / prior-7 (else halves)
+// rule. null when there is no reading at all.
+function splitValued(valued: Valued[], asOf: Date): AxisSplit | null {
   if (valued.length === 0) return null;
 
   const now = asOf.getTime();
@@ -412,7 +439,11 @@ export function describe(analysis: MoodAnalysis, context: SignalContext): MoodSi
 
   // 4. Declining — valence trending down. The First Signal's headline case.
   if (analysis.direction === 'down') {
-    return { finding: 'declining', sentence: decliningSentence(analysis, context, weeks, days), concern: decliningConcern(analysis, context) };
+    return {
+      finding: 'declining',
+      sentence: decliningSentence(analysis, context, weeks, days),
+      concern: decliningConcern(analysis, context),
+    };
   }
 
   // 5. Improving — a quiet, warm positive. Listed last; only worth saying past the early stage.
@@ -459,4 +490,83 @@ function decliningConcern(analysis: MoodAnalysis, context: SignalContext): numbe
   else if (analysis.confidence === 'pattern') concern += 10;
   if (context.isLowestRate) concern += 5;
   return concern;
+}
+
+// ---------------------------------------------------------------------------
+// Trend stream + the trend/feeling divergence heuristic (ticket 26)
+// ---------------------------------------------------------------------------
+//
+// The payoff of splitting the check-in into two prompted answers is the DIVERGENCE between them —
+// readable even for projects with sparse income data, because both axes are self-reported:
+//   trend up + feeling down → the burnout tell (it looks fine on paper, but it's draining you)
+//   trend down + feeling up → sunk-cost bias  (it's sliding, yet you're more attached than ever)
+// Same house style as suggestions.ts / describe(): one sentence of finding, one of suggestion,
+// never a number. Pure — the caller (signals.ts) feeds it the two directions.
+
+// One self-reported trend event, oldest first. `value` is a TRENDS member or null (cleared — a gap).
+export interface TrendEventInput {
+  value: Trend | null;
+  at: Date;
+}
+
+/**
+ * The direction of a project's self-reported TREND stream, using the same last-7 / prior-7 (else
+ * halves) window as the feeling axes. null when fewer than two valued readings (no move to compute).
+ */
+export function analyzeTrendDirection(events: TrendEventInput[], asOf: Date): Direction | null {
+  const valued: Valued[] = [];
+  for (const e of events) {
+    if (e.value === null) continue;
+    valued.push({ at: e.at, score: TREND_POINTS[e.value] });
+  }
+  const delta = deltaOf(splitValued(valued, asOf));
+  return delta === null ? null : directionOf(delta);
+}
+
+export type Divergence = 'divergence_burnout' | 'divergence_sunk_cost';
+
+export interface DivergenceSignal {
+  finding: Divergence;
+  sentence: string;
+  // Higher = list earlier (same scale as MoodSignal.concern). The burnout tell sits just below the
+  // energy-burnout trajectory (100) and above a harsh swing (80); sunk cost sits near a decline.
+  concern: number;
+}
+
+/**
+ * The trend/feeling divergence observation for a project, or null when the two self-reported axes
+ * agree (or either direction is unknown). `feelingDirection` is the valence direction from
+ * analyzeMood; `trendDirection` comes from analyzeTrendDirection over the trend stream.
+ */
+export function describeDivergence(
+  feelingDirection: Direction | null,
+  trendDirection: Direction | null,
+  context: { name: string },
+): DivergenceSignal | null {
+  if (feelingDirection === null || trendDirection === null) return null;
+  const name = context.name;
+
+  if (trendDirection === 'up' && feelingDirection === 'down') {
+    return {
+      finding: 'divergence_burnout',
+      sentence:
+        `${name} is going better and better by your own read, yet your feeling about it keeps ` +
+        `dropping — that gap is the burnout tell. Worth noting what's draining you before the ` +
+        `progress hides it.`,
+      concern: 90,
+    };
+  }
+
+  if (trendDirection === 'down' && feelingDirection === 'up') {
+    return {
+      finding: 'divergence_sunk_cost',
+      sentence:
+        `${name} is sliding by your own read, yet you feel better about it than ever — that's ` +
+        `where sunk-cost bias lives. Worth asking whether the pull is the work or what you've ` +
+        `already put in.`,
+      concern: 60,
+    };
+  }
+
+  return null;
 }

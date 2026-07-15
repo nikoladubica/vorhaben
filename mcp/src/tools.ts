@@ -10,18 +10,14 @@
 
 import type { VorhabenClient } from './apiClient.js';
 
-// Allowed mood feelings (server/src/domain/constants.ts FEELINGS). Surfaced in the schema so the
-// model picks a valid value rather than guessing and getting a 422.
-const FEELINGS = [
-  'happy',
-  'sad',
-  'miserable',
-  'excited',
-  'opportunistic',
-  'pessimistic',
-  'stressed',
-  'grateful',
-] as const;
+// The check-in lists, mirroring server/src/domain/constants.ts (ticket 26). Surfaced in the schema
+// so the model picks a valid value rather than guessing and getting a 422. The FEELING question and
+// the TREND question each have their own closed list; `kind` selects which one applies. The retired
+// legacy feelings (grateful/opportunistic/pessimistic) are read-only on the server and are
+// deliberately NOT offered here for writes.
+const FEELINGS = ['excited', 'happy', 'fine', 'stressed', 'sad', 'miserable'] as const;
+const TRENDS = ['thriving', 'good', 'stable', 'bad', 'failing'] as const;
+const MOOD_KINDS = ['feeling', 'trend', 'untouched'] as const;
 
 // A minimal JSON Schema object for a tool's input. Kept deliberately small — matches the subset
 // the MCP SDK's Tool.inputSchema accepts.
@@ -288,9 +284,11 @@ export const tools: ToolDef[] = [
   {
     name: 'get_mood_history',
     description:
-      "Get a project's mood check-in stream (how the user felt about it over time), newest " +
-      'first, with any "why" notes. Call this when the user asks how they have felt about a ' +
-      'project, or to explain a divergence between revenue and sentiment surfaced by get_signals.',
+      "Get a project's check-in stream (how the user felt about it and how they thought it was " +
+      'going over time), newest first, with any "why" notes. Each entry carries a `kind` — ' +
+      "'feeling' (an emotion), 'trend' (a how-it's-going read), or 'untouched' (an explicit " +
+      '"didn\'t touch it"). Call this when the user asks how they have felt about a project, or to ' +
+      'explain a divergence between revenue and sentiment surfaced by get_signals.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -460,35 +458,63 @@ export const tools: ToolDef[] = [
   {
     name: 'log_mood',
     description:
-      'Record a mood check-in for a project: how the user feels about it right now, with an ' +
-      'optional one-line "why". Use when the user expresses a feeling about a project ("I\'m ' +
-      'stressed about Acme"). Feeling history is kept, never averaged away.',
+      'Record a check-in for a project, with an optional one-line "why". The check-in answers one ' +
+      "of two questions, chosen by `kind`: kind='feeling' (the default) records how the user FEELS " +
+      `about it right now — one of: ${FEELINGS.join(', ')}. kind='trend' records how they think ` +
+      `it is GOING — one of: ${TRENDS.join(', ')}. kind='untouched' records an explicit "I didn't ` +
+      'touch it" (no value). Use when the user expresses a feeling ("I\'m stressed about Acme"), a ' +
+      'sense of trajectory ("Acme is really taking off"), or that they have not worked on it. ' +
+      'History is kept, never averaged away.',
     inputSchema: {
       type: 'object',
       properties: {
         ...projectIdProp,
+        kind: {
+          type: 'string',
+          enum: [...MOOD_KINDS],
+          description:
+            "Which question this answers: 'feeling' (default), 'trend', or 'untouched'. Decides " +
+            'which list `value` must come from.',
+        },
         value: {
           type: 'string',
-          enum: [...FEELINGS],
-          description: 'The feeling. One of the listed values, or null to clear.',
+          enum: [...FEELINGS, ...TRENDS],
+          description:
+            "The check-in value: a feeling when kind='feeling', a trend when kind='trend', or " +
+            "null to clear. Omit entirely when kind='untouched'.",
         },
         note: { type: 'string', description: 'Optional one-line reason, up to 1000 chars.' },
       },
-      required: ['project_id', 'value'],
+      required: ['project_id'],
       additionalProperties: false,
     },
     handler: (client, args) => {
-      // `value` may be null (clears the feeling) — pass it through explicitly rather than dropping
-      // it, since the API requires the key to be present.
+      const kind = optString(args, 'kind') ?? 'feeling';
+      if (!MOOD_KINDS.includes(kind as (typeof MOOD_KINDS)[number])) {
+        throw new Error(`Argument "kind" must be one of: ${MOOD_KINDS.join(', ')}.`);
+      }
       const rawValue = args.value;
+      if (kind === 'untouched') {
+        if (rawValue !== undefined && rawValue !== null) {
+          throw new Error('Argument "value" must be omitted or null when kind is "untouched".');
+        }
+        return client.request('POST', `/api/projects/${requireInt(args, 'project_id')}/moods`, {
+          body: compact({ kind, note: optString(args, 'note') }),
+        });
+      }
+      // feeling / trend: value is required (null clears), validated against the matching list.
+      const allowed = kind === 'trend' ? TRENDS : FEELINGS;
+      if (rawValue === undefined) {
+        throw new Error(`Argument "value" is required when kind is "${kind}".`);
+      }
       if (
         rawValue !== null &&
-        (typeof rawValue !== 'string' || !FEELINGS.includes(rawValue as (typeof FEELINGS)[number]))
+        (typeof rawValue !== 'string' || !allowed.includes(rawValue as never))
       ) {
-        throw new Error(`Argument "value" must be null or one of: ${FEELINGS.join(', ')}.`);
+        throw new Error(`Argument "value" must be null or one of: ${allowed.join(', ')}.`);
       }
       return client.request('POST', `/api/projects/${requireInt(args, 'project_id')}/moods`, {
-        body: compact({ value: rawValue, note: optString(args, 'note') }),
+        body: compact({ kind, value: rawValue, note: optString(args, 'note') }),
       });
     },
   },

@@ -2,14 +2,18 @@ import { db } from '../db/index.js';
 import { computeMetricsForUser } from './metrics.js';
 import {
   analyzeMood,
+  analyzeTrendDirection,
   describe,
+  describeDivergence,
   type Confidence,
   type Direction,
   type Fire,
+  type MoodAnalysis,
   type MoodEventInput,
   type Swing,
+  type TrendEventInput,
 } from './moodAnalysis.js';
-import type { Feeling } from './constants.js';
+import type { Feeling, Trend } from './constants.js';
 
 // ---------------------------------------------------------------------------
 // Signals assembler (breaktrough.md §2.3–§2.4) — the read model behind GET /api/signals
@@ -53,6 +57,12 @@ interface MoodEventRow {
   created_at: Date;
 }
 
+interface TrendEventRow {
+  project_id: number;
+  value: Trend | null;
+  created_at: Date;
+}
+
 /**
  * Assemble the ordered signals for `userId`.
  *
@@ -73,10 +83,12 @@ export async function buildSignalsForUser(userId: number): Promise<Signal[]> {
 
   const projectIds = projects.map((p) => p.id);
 
-  // 2. Every live mood event for those projects, oldest first — one grouped query (bounded by
-  //    COUNT, like metrics.ts), scoped by user_id as defence in depth on top of the project set.
+  // 2. Every live FEELING event for those projects, oldest first — one grouped query, scoped by
+  //    user_id as defence in depth on top of the project set. Scoped to kind='feeling' because
+  //    analyzeMood interprets values on the valence/energy maps; trend/untouched rows would not map
+  //    (ticket 26). Legacy-valued rows are kind='feeling' too, so they still flow through and score.
   const eventRows = await db('mood_events')
-    .where('user_id', userId)
+    .where({ user_id: userId, kind: 'feeling' })
     .whereIn('project_id', projectIds)
     .whereNull('deleted_at')
     .orderBy('created_at', 'asc')
@@ -88,6 +100,22 @@ export async function buildSignalsForUser(userId: number): Promise<Signal[]> {
     const stream = streamByProject.get(row.project_id) ?? [];
     stream.push({ value: row.value, at: new Date(row.created_at) });
     streamByProject.set(row.project_id, stream);
+  }
+
+  // 2b. The self-reported TREND stream, same shape — feeds the trend/feeling divergence heuristic.
+  const trendRows = await db('mood_events')
+    .where({ user_id: userId, kind: 'trend' })
+    .whereIn('project_id', projectIds)
+    .whereNull('deleted_at')
+    .orderBy('created_at', 'asc')
+    .orderBy('id', 'asc')
+    .select<TrendEventRow[]>('project_id', 'value', 'created_at');
+
+  const trendByProject = new Map<number, TrendEventInput[]>();
+  for (const row of trendRows) {
+    const stream = trendByProject.get(row.project_id) ?? [];
+    stream.push({ value: row.value, at: new Date(row.created_at) });
+    trendByProject.set(row.project_id, stream);
   }
 
   // 3. Canonical windowed metrics — reused once for the effective hourly rate pairing (§2.3 "read
@@ -111,32 +139,55 @@ export async function buildSignalsForUser(userId: number): Promise<Signal[]> {
     (a) => a.analysis.confidence !== 'none' && a.analysis.direction === 'down',
   ).length;
 
-  // 5. Second pass: render each describable signal, carrying the pairing context.
+  // Build the Signal envelope for a project from its feeling analysis, with the finding/sentence
+  // supplied by whichever heuristic fired (the First Signal or the divergence heuristic).
+  const toSignal = (
+    project: ProjectRow,
+    analysis: MoodAnalysis,
+    finding: string,
+    sentence: string,
+  ): Signal => ({
+    project_id: project.id,
+    name: project.name,
+    confidence: analysis.confidence as Exclude<Confidence, 'none'>,
+    direction: analysis.direction,
+    energy_direction: analysis.energyDirection,
+    fire: analysis.fire,
+    swing: analysis.swing,
+    streak: analysis.streak,
+    trend_score: analysis.trendScore,
+    days: Math.round(analysis.spanDays),
+    finding,
+    sentence,
+  });
+
+  // 5. Second pass: render each describable signal, carrying the pairing context. A project may
+  //    surface both its First Signal AND a trend/feeling divergence observation (ticket 26) — they
+  //    answer different questions, so both are listed, ordered by their own concern.
   const scored: { signal: Signal; concern: number }[] = [];
   for (const { project, analysis, rate } of analyses) {
     if (analysis.confidence === 'none') continue;
     const isLowestRate = minRate !== null && rate !== null && rate === minRate;
     const isOnlyDown = downCount === 1 && analysis.direction === 'down';
     const described = describe(analysis, { name: project.name, isLowestRate, isOnlyDown });
-    if (described === null) continue;
+    if (described !== null) {
+      scored.push({
+        concern: described.concern,
+        signal: toSignal(project, analysis, described.finding, described.sentence),
+      });
+    }
 
-    scored.push({
-      concern: described.concern,
-      signal: {
-        project_id: project.id,
-        name: project.name,
-        confidence: analysis.confidence,
-        direction: analysis.direction,
-        energy_direction: analysis.energyDirection,
-        fire: analysis.fire,
-        swing: analysis.swing,
-        streak: analysis.streak,
-        trend_score: analysis.trendScore,
-        days: Math.round(analysis.spanDays),
-        finding: described.finding,
-        sentence: described.sentence,
-      },
+    // Divergence between the two self-reported streams (trend vs feeling direction).
+    const trendDirection = analyzeTrendDirection(trendByProject.get(project.id) ?? [], asOf);
+    const divergence = describeDivergence(analysis.direction, trendDirection, {
+      name: project.name,
     });
+    if (divergence !== null) {
+      scored.push({
+        concern: divergence.concern,
+        signal: toSignal(project, analysis, divergence.finding, divergence.sentence),
+      });
+    }
   }
 
   // 6. Most concerning first; tie-break by the more negative trend, then project id for stability.

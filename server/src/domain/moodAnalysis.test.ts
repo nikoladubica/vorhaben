@@ -1,6 +1,14 @@
 import { describe as group, expect, it } from 'vitest';
-import { analyzeMood, describe, type MoodEventInput } from './moodAnalysis.js';
-import type { Feeling } from './constants.js';
+import {
+  analyzeMood,
+  analyzeTrendDirection,
+  describe,
+  describeDivergence,
+  type Direction,
+  type MoodEventInput,
+  type TrendEventInput,
+} from './moodAnalysis.js';
+import type { Feeling, Trend } from './constants.js';
 
 // The engine is pure, so it is tested with fixtures only — no DB. Every fixture is built relative
 // to a fixed `asOf`, and events are constructed OLDEST FIRST (the contract analyzeMood expects).
@@ -11,6 +19,11 @@ const ASOF = new Date('2026-07-11T12:00:00Z');
 
 // An event `days` days before asOf.
 function ev(value: Feeling | null, days: number): MoodEventInput {
+  return { value, at: new Date(ASOF.getTime() - days * DAY_MS) };
+}
+
+// A trend event `days` days before asOf.
+function tev(value: Trend | null, days: number): TrendEventInput {
   return { value, at: new Date(ASOF.getTime() - days * DAY_MS) };
 }
 
@@ -131,10 +144,7 @@ group('describe — the two signature trajectories (acceptance)', () => {
   });
 
   it('a stressed → sad slide is BURNOUT, never strain (the fire going out)', () => {
-    const a = analyzeMood(
-      [ev('stressed', 6), ev('stressed', 4), ev('sad', 2), ev('sad', 0)],
-      ASOF,
-    );
+    const a = analyzeMood([ev('stressed', 6), ev('stressed', 4), ev('sad', 2), ev('sad', 0)], ASOF);
     expect(a.fire).toBe('fading');
     expect(a.energyDirection).toBe('down');
     const signal = describe(a, CTX);
@@ -197,5 +207,76 @@ group('describe — the First Signal ladder', () => {
       CTX,
     );
     expect(harsh!.concern).toBeGreaterThan(declining!.concern);
+  });
+});
+
+// ticket 26 — the check-in split
+group('analyzeMood — `fine` is the neutral steady state (ticket 26)', () => {
+  it('scores fine at valence 0 / energy 0: a fine run reads flat and steady', () => {
+    const a = analyzeMood([ev('fine', 6), ev('fine', 3), ev('fine', 0)], ASOF);
+    expect(a.valenceLevel).toBe(0);
+    expect(a.direction).toBe('flat');
+    expect(a.fire).toBe('steady');
+    expect(a.trendScore).toBe(0);
+  });
+
+  it('reads a slide from happy into fine as a decline (fine sits below happy)', () => {
+    const a = analyzeMood([ev('happy', 6), ev('happy', 3), ev('fine', 0)], ASOF);
+    expect(a.direction).toBe('down');
+    expect(a.trendScore).toBeLessThan(0);
+  });
+});
+
+group('analyzeMood — legacy feelings still score (ticket 26)', () => {
+  it('grateful/opportunistic/pessimistic remain scorable and read as a valence decline', () => {
+    // grateful (+2) → opportunistic (+1) → pessimistic (−1): the whole run is still scored on the
+    // valence map exactly as before the writable list shrank, so it reads as a decline.
+    const a = analyzeMood([ev('grateful', 6), ev('opportunistic', 3), ev('pessimistic', 0)], ASOF);
+    expect(a.direction).toBe('down');
+    expect(a.trendScore).toBeLessThan(0);
+    // Both axes are still computed for legacy-valued streams (not null → they scored).
+    expect(a.valenceLevel).not.toBeNull();
+    expect(a.energyDirection).not.toBeNull();
+  });
+});
+
+group('analyzeTrendDirection — the trend stream direction (ticket 26)', () => {
+  it('reads a rising trend (bad → thriving) as up and a falling one as down', () => {
+    expect(analyzeTrendDirection([tev('bad', 6), tev('good', 3), tev('thriving', 0)], ASOF)).toBe(
+      'up',
+    );
+    expect(analyzeTrendDirection([tev('thriving', 6), tev('good', 3), tev('bad', 0)], ASOF)).toBe(
+      'down',
+    );
+  });
+
+  it('a steady stable run is flat, and a single reading has no direction', () => {
+    expect(analyzeTrendDirection([tev('stable', 6), tev('stable', 0)], ASOF)).toBe('flat');
+    expect(analyzeTrendDirection([tev('good', 0)], ASOF)).toBeNull();
+  });
+});
+
+group('describeDivergence — trend vs feeling (ticket 26)', () => {
+  const NAME = { name: 'Corporate gig' };
+
+  it('trend up + feeling down is the burnout tell', () => {
+    const d = describeDivergence('down', 'up', NAME);
+    expect(d?.finding).toBe('divergence_burnout');
+    expect(d?.sentence).toContain('burnout tell');
+  });
+
+  it('trend down + feeling up is sunk-cost bias', () => {
+    const d = describeDivergence('up', 'down', NAME);
+    expect(d?.finding).toBe('divergence_sunk_cost');
+    expect(d?.sentence).toContain('sunk-cost bias');
+  });
+
+  it('says nothing when the two axes agree, or either direction is unknown', () => {
+    expect(describeDivergence('up', 'up', NAME)).toBeNull();
+    expect(describeDivergence('down', 'down', NAME)).toBeNull();
+    expect(describeDivergence('flat', 'up', NAME)).toBeNull();
+    const unknown: Direction | null = null;
+    expect(describeDivergence(unknown, 'up', NAME)).toBeNull();
+    expect(describeDivergence('down', unknown, NAME)).toBeNull();
   });
 });

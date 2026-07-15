@@ -2,8 +2,14 @@ import { Router } from 'express';
 import type { Knex } from 'knex';
 import { db } from '../db/index.js';
 import { assertProjectOwned } from '../domain/ownership.js';
-import { FEELINGS, type Feeling } from '../domain/constants.js';
-import { recordMood, MOOD_SOURCES, type MoodSource } from '../domain/mood.js';
+import { isWritableFeeling, isTrend, type Feeling, type Trend } from '../domain/constants.js';
+import {
+  recordMood,
+  MOOD_SOURCES,
+  MOOD_KINDS,
+  type MoodSource,
+  type MoodKind,
+} from '../domain/mood.js';
 
 // Two routers, mirroring the notes split: the nested one mounts alongside projectsRouter at
 // /api/projects and owns the `/:id/moods` paths; the flat one mounts at /api/moods and owns
@@ -19,6 +25,7 @@ interface MoodListRow {
   value: string | null;
   note: string | null;
   source: string;
+  kind: string;
   created_at: Date;
 }
 
@@ -28,6 +35,7 @@ function moodListSelect(executor: Knex | Knex.Transaction) {
     'value',
     'note',
     'source',
+    'kind',
     'created_at',
   );
 }
@@ -82,8 +90,10 @@ projectMoodsRouter.get('/:id/moods', async (req, res) => {
   res.json(rows);
 });
 
-// POST /api/projects/:id/moods — { value, note? } → recordMood with source 'manual'. This is the
-// note-carrying path the project page (and later tickets) use; a note always appends a new event.
+// POST /api/projects/:id/moods — { value, note?, kind? } → recordMood with source 'manual'. This is
+// the note-carrying path the project page (and later tickets) use; a note always appends a new
+// event. `kind` (default 'feeling') selects which question is answered: feeling → a FEELINGS value,
+// trend → a TRENDS value, untouched → an explicit "didn't touch it" (no value).
 projectMoodsRouter.post('/:id/moods', async (req, res) => {
   const userId = req.userId as number;
   const id = parseId(req.params.id);
@@ -101,17 +111,37 @@ projectMoodsRouter.post('/:id/moods', async (req, res) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
   const fields: Record<string, string> = {};
 
-  // value: required key; null clears the feeling, otherwise a valid FEELINGS member. Same closed
-  // list and 422 shape as the projects PATCH.
-  let value: Feeling | null = null;
-  if (!hasOwn(body, 'value')) {
+  // kind: optional flow marker (feeling | trend | untouched); defaults to feeling. Validated first
+  // because it decides how `value` is validated.
+  let kind: MoodKind = 'feeling';
+  if (hasOwn(body, 'kind') && body.kind !== null && body.kind !== undefined) {
+    if (typeof body.kind !== 'string' || !MOOD_KINDS.includes(body.kind as MoodKind)) {
+      fields.kind = 'invalid';
+    } else {
+      kind = body.kind as MoodKind;
+    }
+  }
+
+  // value: validated per kind. untouched carries no rating — a non-null value is a mismatch (422),
+  // an absent/null value is fine. feeling/trend require the key: null clears, otherwise a member of
+  // the writable FEELINGS / TRENDS list. Legacy feelings are read-only and rejected here.
+  let value: Feeling | Trend | null = null;
+  if (kind === 'untouched') {
+    if (hasOwn(body, 'value') && body.value !== null && body.value !== undefined) {
+      fields.value = 'invalid';
+    }
+  } else if (!hasOwn(body, 'value')) {
     fields.value = 'required';
   } else if (body.value === null) {
     value = null;
-  } else if (typeof body.value !== 'string' || !FEELINGS.includes(body.value as Feeling)) {
+  } else if (typeof body.value !== 'string') {
+    fields.value = 'invalid';
+  } else if (kind === 'feeling' && !isWritableFeeling(body.value)) {
+    fields.value = 'invalid';
+  } else if (kind === 'trend' && !isTrend(body.value)) {
     fields.value = 'invalid';
   } else {
-    value = body.value as Feeling;
+    value = body.value as Feeling | Trend;
   }
 
   // note: optional one-line "why?", stored verbatim (never rewritten). Whitespace-only → no note.
@@ -141,7 +171,7 @@ projectMoodsRouter.post('/:id/moods', async (req, res) => {
     return;
   }
 
-  const { id: eventId } = await recordMood(userId, id, value, { note, source });
+  const { id: eventId } = await recordMood(userId, id, value, { note, source, kind });
 
   const created = await moodListSelect(db).where('id', eventId).first();
   res.status(201).json(created);
@@ -152,8 +182,14 @@ projectMoodsRouter.post('/:id/moods', async (req, res) => {
 // ---------------------------------------------------------------------------
 
 // GET /api/moods/today?tz= — what the user has logged today. `logged` is true when ANY live mood
-// event exists today; `projectIds` lists the projects already covered, so the daily nudge can walk
-// the remaining ones one at a time instead of settling the whole bar on the first entry. `tz` is an
+// event exists today. Coverage is now reported PER kind (ticket 26):
+//   projectIds        — feeling-covered projects; KEPT with its original meaning so the not-yet-
+//                       updated client keeps working until ticket 27 lands.
+//   feelingProjectIds — same list, named explicitly for the new client.
+//   trendProjectIds   — projects with a trend check-in today.
+//   untouchedProjectIds — projects explicitly marked "didn't touch it" today.
+// An `untouched` event answers BOTH questions, so it counts a project as covered for feeling AND
+// trend (it is the Weekly Close catch-up answer — the user has addressed the project). `tz` is an
 // optional signed minute offset from UTC (e.g. 120 for UTC+2) so "today" matches the user's wall
 // clock; omitted → server date (v1 acceptable per the ticket). Clamped to a real-world range.
 const MAX_TZ_OFFSET = 14 * 60; // +14:00, the largest real offset
@@ -171,13 +207,37 @@ moodsRouter.get('/today', async (req, res) => {
 
   // Compare the local calendar date of each event's created_at against the local calendar date of
   // now, both shifted by the same offset — done in the DB so it is one indexed scan and free of
-  // app/DB clock skew.
+  // app/DB clock skew. Pull (project_id, kind) pairs so coverage can be split per question.
   const rows = await db('mood_events')
     .where('user_id', userId)
     .whereNull('deleted_at')
     .whereRaw('DATE(created_at + INTERVAL ? MINUTE) = DATE(NOW() + INTERVAL ? MINUTE)', [tz, tz])
-    .distinct('project_id');
+    .distinct('project_id', 'kind');
 
-  const projectIds = rows.map((r: { project_id: number }) => r.project_id);
-  res.json({ logged: projectIds.length > 0, projectIds });
+  const feelingSet = new Set<number>();
+  const trendSet = new Set<number>();
+  const untouchedSet = new Set<number>();
+  for (const r of rows as Array<{ project_id: number; kind: string }>) {
+    if (r.kind === 'untouched') {
+      // An untouched answer addresses both questions for the day.
+      untouchedSet.add(r.project_id);
+      feelingSet.add(r.project_id);
+      trendSet.add(r.project_id);
+    } else if (r.kind === 'trend') {
+      trendSet.add(r.project_id);
+    } else {
+      // 'feeling' (the column default, so any legacy/unknown kind counts here too).
+      feelingSet.add(r.project_id);
+    }
+  }
+
+  const feelingProjectIds = [...feelingSet];
+  res.json({
+    logged: rows.length > 0,
+    // Backward-compatible field: feeling-covered projects, as before ticket 26.
+    projectIds: feelingProjectIds,
+    feelingProjectIds,
+    trendProjectIds: [...trendSet],
+    untouchedProjectIds: [...untouchedSet],
+  });
 });

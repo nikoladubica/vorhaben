@@ -36,8 +36,12 @@ function analysis(over: Partial<MoodAnalysis> = {}): MoodAnalysis {
 group('evaluateFeelingDrift — established-only gating', () => {
   it('says nothing below established confidence, even with a strong decline', () => {
     const strong = { direction: 'down' as const, streak: 6, trendScore: -2 };
-    expect(evaluateFeelingDrift(analysis({ confidence: 'pattern', ...strong }), { name: 'X' })).toBeNull();
-    expect(evaluateFeelingDrift(analysis({ confidence: 'early', ...strong }), { name: 'X' })).toBeNull();
+    expect(
+      evaluateFeelingDrift(analysis({ confidence: 'pattern', ...strong }), { name: 'X' }),
+    ).toBeNull();
+    expect(
+      evaluateFeelingDrift(analysis({ confidence: 'early', ...strong }), { name: 'X' }),
+    ).toBeNull();
   });
 
   it('fires once established with the same decline', () => {
@@ -52,7 +56,9 @@ group('evaluateFeelingDrift — established-only gating', () => {
 group('evaluateFeelingDrift — streak threshold', () => {
   it('does not fire below the minimum streak (and no other trigger)', () => {
     // streak 3 (< 4), trend flat (> -1), fire steady → nothing to say.
-    expect(evaluateFeelingDrift(analysis({ direction: 'down', streak: 3 }), { name: 'X' })).toBeNull();
+    expect(
+      evaluateFeelingDrift(analysis({ direction: 'down', streak: 3 }), { name: 'X' }),
+    ).toBeNull();
   });
 
   it('fires at exactly the minimum streak', () => {
@@ -80,10 +86,9 @@ group('evaluateFeelingDrift — strain vs. checked-out framing split', () => {
   });
 
   it('a fading fire reads as CHECKED-OUT (an ending is on the table)', () => {
-    const finding = evaluateFeelingDrift(
-      analysis({ energyDirection: 'down', fire: 'fading' }),
-      { name: 'Corporate gig' },
-    );
+    const finding = evaluateFeelingDrift(analysis({ energyDirection: 'down', fire: 'fading' }), {
+      name: 'Corporate gig',
+    });
     expect(finding?.framing).toBe('checked_out');
     expect(finding?.sentence).toContain('the fire is going out');
     expect(finding?.sentence).toContain('maybe an ending');
@@ -106,7 +111,11 @@ group('evaluateAttentionDrift — the 45-day boundary', () => {
 
   it('stays silent one day inside the window', () => {
     expect(
-      evaluateAttentionDrift({ name: 'X', lastActivityAt: at(ATTENTION_DRIFT_DAYS - 1), asOf: ASOF }),
+      evaluateAttentionDrift({
+        name: 'X',
+        lastActivityAt: at(ATTENTION_DRIFT_DAYS - 1),
+        asOf: ASOF,
+      }),
     ).toBeNull();
   });
 
@@ -119,6 +128,37 @@ group('evaluateAttentionDrift — the 45-day boundary', () => {
     expect(finding?.kind).toBe('attention_drift');
     expect(finding?.sentence).toContain('guilt-free');
     expect(finding?.sentence).toContain('stays in your history');
+  });
+
+  // ticket 26 — explicit "didn't touch it" confirmations
+  it('leaves the copy unchanged when there are no untouched confirmations', () => {
+    const finding = evaluateAttentionDrift({
+      name: 'Old client',
+      lastActivityAt: at(ATTENTION_DRIFT_DAYS),
+      asOf: ASOF,
+      untouchedConfirmations: 0,
+    });
+    expect(finding?.sentence).not.toContain('said as much');
+  });
+
+  it('names a single untouched confirmation, and pluralizes several', () => {
+    const one = evaluateAttentionDrift({
+      name: 'Old client',
+      lastActivityAt: at(ATTENTION_DRIFT_DAYS),
+      asOf: ASOF,
+      untouchedConfirmations: 1,
+    });
+    expect(one?.sentence).toContain('said as much once');
+    // Still guilt-free — corroboration strengthens, it does not scold.
+    expect(one?.sentence).toContain('guilt-free');
+
+    const many = evaluateAttentionDrift({
+      name: 'Old client',
+      lastActivityAt: at(ATTENTION_DRIFT_DAYS),
+      asOf: ASOF,
+      untouchedConfirmations: 3,
+    });
+    expect(many?.sentence).toContain('said as much 3 times');
   });
 });
 

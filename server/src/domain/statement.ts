@@ -693,25 +693,22 @@ export async function buildStatementForUser(
   const projectIds = projectMeta.map((p) => p.id);
   const prevMonthlyNet = sumMonthlyNet(prevMetrics, [...prevMetrics.keys()]);
 
-  // 4. Every live mood event up to the quarter end for the overlapping projects, oldest first —
+  // 4. Every live FEELING event up to the quarter end for the overlapping projects, oldest first —
   //    one grouped query, user-scoped. Events before the quarter feed the rolling-window verdict.
+  //    Scoped to kind='feeling': the statement's trajectory, verdict and quotes all interpret values
+  //    as feelings; trend/untouched rows are a different question (ticket 26). Legacy-valued rows are
+  //    kind='feeling', so past events read exactly as before.
   const eventRows =
     projectIds.length === 0
       ? []
       : await db('mood_events')
-          .where('user_id', userId)
+          .where({ user_id: userId, kind: 'feeling' })
           .whereIn('project_id', projectIds)
           .whereNull('deleted_at')
           .andWhereRaw('DATE(created_at) <= ?', [range.to])
           .orderBy('created_at', 'asc')
           .orderBy('id', 'asc')
-          .select<MoodEventRow[]>(
-            'project_id',
-            'value',
-            'note',
-            'source_transcript',
-            'created_at',
-          );
+          .select<MoodEventRow[]>('project_id', 'value', 'note', 'source_transcript', 'created_at');
   const eventsByProject = new Map<number, StatementMoodEvent[]>();
   for (const row of eventRows) {
     const list = eventsByProject.get(row.project_id) ?? [];
@@ -829,6 +826,8 @@ export async function listStatementPeriods(
         db.raw("DATE_FORMAT(MIN(e.date), '%Y-%m-%d') as min_date"),
         db.raw("DATE_FORMAT(MAX(e.date), '%Y-%m-%d') as max_date"),
       ),
+    // Counts check-in ACTIVITY (which quarters have any data), so ALL kinds count — an untouched
+    // answer is a check-in too (ticket 26). No kind filter here on purpose.
     db('mood_events')
       .where('user_id', userId)
       .whereNull('deleted_at')
@@ -852,8 +851,7 @@ export async function listStatementPeriods(
   // Which quarters actually contain data (income entries or mood events). One grouped query each,
   // keyed by the quarter string derived in SQL (year, quarter number).
   const withData = new Set<string>();
-  const quarterExpr = (col: string) =>
-    db.raw(`CONCAT(YEAR(${col}), '-Q', QUARTER(${col})) as q`);
+  const quarterExpr = (col: string) => db.raw(`CONCAT(YEAR(${col}), '-Q', QUARTER(${col})) as q`);
   const [entryQuarters, moodQuarters] = await Promise.all([
     db('income_entries as e')
       .join('projects as p', 'p.id', 'e.project_id')
@@ -861,6 +859,7 @@ export async function listStatementPeriods(
       .whereNull('p.deleted_at')
       .groupByRaw('YEAR(e.date), QUARTER(e.date)')
       .select<Array<{ q: string }>>(quarterExpr('e.date')),
+    // Same "which quarters have data" activity count — ALL kinds count (ticket 26), no kind filter.
     db('mood_events')
       .where('user_id', userId)
       .whereNull('deleted_at')
