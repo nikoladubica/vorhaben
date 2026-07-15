@@ -12,7 +12,10 @@ import { api } from '../api';
 
 // One active project's week-at-a-glance, as returned inside GET /closes/current. `hours` is a
 // decimal string ("12.5", "0.0" when none); `income` is a fixed-2 decimal string in the base
-// currency ("240.00", "0.00" when none); `mood_events` counts this week's live mood events.
+// currency ("240.00", "0.00" when none); `mood_events` counts this week's live mood events across
+// ALL three kinds (feeling, trend, untouched) — answering either question counts as a check-in, and
+// a "didn't touch it" answer is a check-in too (ticket 27), so this is an activity count, not a
+// feelings-only count. Intentional: do not scope it to kind = 'feeling'.
 export interface CloseProject {
   project_id: number;
   name: string;

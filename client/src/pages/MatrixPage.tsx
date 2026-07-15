@@ -14,8 +14,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { MatrixPayload, MatrixProject } from '../api/matrix';
 import { getMatrix } from '../api/matrix';
-import type { MoodEvent } from '../types';
+import type { MoodEvent, Trend } from '../types';
 import { listProjectMoods } from '../api/moods';
+import { TREND_LABEL } from '../components/canvas/trendMeta';
 import { formatHours, formatMoney, formatRelativeTime } from '../domain/format';
 import './matrix.css';
 
@@ -56,9 +57,19 @@ interface Stance {
   note: string;
 }
 
-// 'excited' → 'Excited'; a cleared feeling reads as "Cleared" (matches MoodSection).
-function feelingLabel(value: MoodEvent['value']): string {
-  if (value === null) return 'Cleared';
+// One stream entry's label, by kind (mirrors MoodSection.streamLabel): a feeling reads as the
+// capitalized word, a trend as its glyph + word ("▲ Good") via the shared TREND_LABEL map, an
+// untouched entry as "Didn't touch it". A cleared feeling/trend (null value) reads "Cleared".
+// Legacy feelings still render — they are only barred from the picker, never from history.
+function streamLabel(ev: MoodEvent): string {
+  if (ev.kind === 'untouched') return 'Didn’t touch it';
+  if (ev.value === null) return 'Cleared';
+  if (ev.kind === 'trend') return TREND_LABEL[ev.value as Trend] ?? capitalize(ev.value);
+  return capitalize(ev.value);
+}
+
+// 'excited' → 'Excited' for display; state stays lowercase enum values. Works for legacy feelings too.
+function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
@@ -578,7 +589,7 @@ function MatrixSidePanel({ project, median, ccy }: MatrixSidePanelProps) {
           <div className="mstream">
             {events.map((ev) => (
               <div key={ev.id} className="mev">
-                <span className="mf">{feelingLabel(ev.value)}</span>
+                <span className="mf">{streamLabel(ev)}</span>
                 <span className="mw">{formatRelativeTime(ev.created_at)}</span>
                 {ev.note && <span className="mn">{ev.note}</span>}
               </div>
