@@ -62,3 +62,24 @@ export function formatMonthYear(date: string): string {
 export function todayString(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+// An ISO timestamp → a short relative label ("just now", "2 hours ago", "3 days ago") for the mood
+// stream. Anything older than ~4 weeks falls back to the full Swiss date. Falls back to the raw
+// string if the timestamp cannot be parsed.
+export function formatRelativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (secs < 45) return 'just now';
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins} ${mins === 1 ? 'minute' : 'minutes'} ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  if (days < 28) {
+    const weeks = Math.round(days / 7);
+    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  }
+  return formatFullDate(iso.slice(0, 10));
+}

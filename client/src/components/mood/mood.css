@@ -1,0 +1,223 @@
+/* Mood block + daily nudge (ticket 01 / §2.2). Composed from the Swiss tokens only — hairline
+   borders, square corners, no shadows, no red, no animation. The feeling control itself is the
+   canvas FeelingPicker (.cv-pick / .cv-menu, styled in pages/canvas.css); the wrappers below only
+   position its popover and lay out the surrounding rows. */
+
+/* ————— shared: positioned wrapper so the picker's absolute .cv-menu drops below the button ————— */
+.mood-pick {
+  position: relative;
+  display: inline-block;
+}
+
+/* ————— shared CheckInRow: the two-question unit (nudge, Weekly Close, project page) ————— */
+.checkin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+/* Project name — shown only where several projects are listed (the nudge). */
+.checkin-name {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.checkin-picks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+/* Quiet third answer — ghost, muted, no icon. Distinct from dismissing the nudge. */
+.checkin-untouched {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.checkin-untouched:hover {
+  color: var(--ink);
+}
+.checkin-untouched[aria-pressed='true'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.checkin-untouched:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ————— project-page Mood block ————— */
+.mood-set {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 2px 0 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+.mood-why {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mood-why-in {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+}
+.mood-why-in:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.mood-stream {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mood-ev {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.mood-ev:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.mood-ev-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mood-ev-v {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mood-ev-d {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mood-ev-n {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+/* ————— First Signal line (breaktrough.md §2.3–§2.4): the project's own mood read, under the
+   stream. Words only — a confidence eyebrow labels how much data backs it; no numbers, no red. */
+.mood-signal {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+.mood-signal-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.mood-signal-text {
+  margin: 7px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* ————— daily nudge bar (shared: Dashboard + Projects) ————— */
+.mood-nudge {
+  position: relative;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mood-nudge-q {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  padding-right: 28px; /* keep clear of the dismiss control */
+}
+/* One project per line now — each row carries two pickers plus the quiet third answer, too wide to
+   wrap several across. The walking dot still marks the one up next. */
+.mood-nudge-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mood-nudge-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* The project up next carries the one red mark in the bar (red is earned: it points at the single
+   thing to do). The others hold the same 5px of space so the row doesn't shift as they drop out. */
+.mood-nudge-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: transparent;
+}
+.mood-nudge-item.is-next .mood-nudge-dot {
+  background: var(--red);
+  animation: mood-nudge-blink 1.6s ease-in-out infinite;
+}
+.mood-nudge-item.is-next .checkin-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+@keyframes mood-nudge-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mood-nudge-item.is-next .mood-nudge-dot {
+    animation: none;
+  }
+}
+.mood-nudge-x {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: var(--ink-3);
+}
+.mood-nudge-x:hover {
+  color: var(--ink);
+}
+.mood-nudge-x:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}

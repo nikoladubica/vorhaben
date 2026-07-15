@@ -1,26 +1,20 @@
-// Feeling picker for a canvas card (screen 14). Presentational + prop-driven — it never calls the
-// API; the page owns persistence and passes `onChange`. The trigger is a real <button> (so the card
-// drag handler skips it via closest('button')); clicking it toggles a hairline `.cv-menu` popover of
-// the 8 closed-list feelings in a 2-col grid, plus a Clear row. Closes on pick, outside-click, and
-// Escape.
+// Feeling picker for a canvas card (screen 14) and the check-in surfaces. Presentational +
+// prop-driven — it never calls the API; the host owns persistence and passes `onChange`. The trigger
+// is a real <button> (so the card drag handler skips it via closest('button')); clicking it toggles
+// a hairline `.cv-menu` popover of the 6 WRITABLE feelings in a 2-col grid, plus a Clear row. Closes
+// on pick, outside-click, and Escape.
+//
+// The list shrank to 6 (owner decision 2026-07-14): the retired words (grateful, opportunistic,
+// pessimistic) are never offered here, but a project still holding a legacy value shows it on the
+// trigger — history renders, it just can't be re-picked.
 
 import { useRef, useState } from 'react';
 import type { Feeling } from '../../types';
+import { FEELINGS } from '../../types';
 import { useDismiss } from './useDismiss';
 
-// The 8 feelings, in the design's reading order (Happy/Sad, Miserable/Excited, …). Closed list.
-const FEELINGS: Feeling[] = [
-  'happy',
-  'sad',
-  'miserable',
-  'excited',
-  'opportunistic',
-  'pessimistic',
-  'stressed',
-  'grateful',
-];
-
-// 'excited' → 'Excited' for display; state stays lowercase snake-free enum values.
+// 'excited' → 'Excited' for display; state stays lowercase enum values. Works for legacy values too,
+// so a legacy feeling still capitalizes correctly on the trigger.
 function capitalize(f: Feeling): string {
   return f.charAt(0).toUpperCase() + f.slice(1);
 }

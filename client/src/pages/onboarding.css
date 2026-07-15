@@ -1,0 +1,152 @@
+/* ————— /welcome — the Honesty Contract (ticket 03) ————— */
+/* Screen spec by design-guardian-agent. Tokens only, square corners, hairline rules, no shadows.
+   One earned red: the CTA (plus the constant wordmark square and the system focus ring). */
+
+.welcome-stage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  padding: 48px 20px 64px;
+}
+
+.contract {
+  width: 100%;
+  max-width: 560px; /* global box-sizing: border-box → never overflows on narrow widths */
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  padding: 40px clamp(24px, 5vw, 44px) 36px;
+}
+
+.contract .wordmark {
+  justify-content: flex-start;
+  margin-bottom: 34px;
+}
+
+.contract-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
+}
+
+.contract-title {
+  font-size: 30px;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.02em; /* negative tracking on display size */
+  color: var(--ink);
+  margin: 12px 0 0;
+  text-wrap: balance;
+}
+
+.contract-lead {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 14px 0 0;
+  max-width: 48ch;
+}
+
+/* the four points — hairline-ruled rows, grey tabular numerals (the accent is spent on the CTA) */
+.contract-points {
+  list-style: none;
+  margin: 30px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.cpoint {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.cpoint .cnum {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3);
+  padding-top: 2px;
+}
+
+.cpoint h2 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.cpoint p {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  margin: 5px 0 0;
+}
+
+/* actions — the one earned red */
+.contract-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  margin: 30px 0 0;
+}
+
+.contract-cta {
+  display: block;
+  width: 100%;
+  background: var(--red);
+  color: #fff;
+  border: 0; /* square corners: no radius anywhere */
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 15px 18px;
+  text-align: center;
+  cursor: pointer;
+}
+.contract-cta:hover {
+  background: var(--red-dark);
+}
+
+.contract-skip {
+  align-self: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 4px 8px;
+}
+.contract-skip:hover {
+  color: var(--ink-2);
+}
+
+.contract-note {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  margin: 22px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--grid);
+}
+
+/* responsive — no horizontal scroll at any width */
+@media (max-width: 420px) {
+  .contract {
+    padding: 32px 20px 28px;
+  }
+  .contract-title {
+    font-size: 26px;
+  }
+}

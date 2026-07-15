@@ -13,6 +13,8 @@ import {
   type ImportReport,
   type ImportTable,
   dryRunImport,
+  importTemplateUrl,
+  projectIdsUrl,
   runImport,
 } from '../../api/exportImport';
 
@@ -98,8 +100,41 @@ export function ImportFlow({ table, projectId, extraControl }: ImportFlowProps) 
   const canImport =
     phase === 'validated' && report !== null && !hasErrors && report.insert_rows > 0;
 
+  // The project-id lookup only helps when rows must name their own project. A targeted import puts
+  // every row into one known project, so its file has no project columns and the list is just noise.
+  const needsProjectIds = table === 'income-entries' && projectId === undefined;
+
   return (
     <>
+      <div className="import-starter">
+        <div className="starter-row">
+          <span className="starter-label">Example file to fill in</span>
+          <a className="btn ghost sm" href={importTemplateUrl(table, 'csv', projectId)} download>
+            CSV
+          </a>
+          <a className="btn ghost sm" href={importTemplateUrl(table, 'xlsx', projectId)} download>
+            Excel
+          </a>
+        </div>
+
+        {needsProjectIds && (
+          <div className="starter-row">
+            <span className="starter-label">Your projects and their IDs</span>
+            <a className="btn ghost sm" href={projectIdsUrl('csv')} download>
+              CSV
+            </a>
+            <a className="btn ghost sm" href={projectIdsUrl('xlsx')} download>
+              Excel
+            </a>
+          </div>
+        )}
+
+        <p className="import-note">
+          The example rows are labelled as examples — replace them with your own before you import.
+          {needsProjectIds && ' Each entry names its project by ID or by name; either one works.'}
+        </p>
+      </div>
+
       <div className="import-controls">
         {extraControl}
 
@@ -142,8 +177,8 @@ export function ImportFlow({ table, projectId, extraControl }: ImportFlowProps) 
       {phase !== 'done' && report !== null && hasErrors && (
         <div className="import-errors">
           <p className="form-error" role="alert">
-            {report.errors.length} problem{report.errors.length === 1 ? '' : 's'} found — nothing has
-            been imported. Fix the file and validate again.
+            {report.errors.length} problem{report.errors.length === 1 ? '' : 's'} found — nothing
+            has been imported. Fix the file and validate again.
           </p>
           <div className="table-scroll">
             <table className="projects">

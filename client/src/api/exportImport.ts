@@ -86,6 +86,25 @@ export function exportProjectXlsxUrl(projectId: number): string {
   return `/api/export/project/${projectId}.xlsx`;
 }
 
+// The download URL for a table's import template — the header row the importer expects plus example
+// rows to overwrite. The income-entries template comes seeded with the user's own project ids. A
+// `projectId` asks for the targeted shape (no project columns, examples from that project), matching
+// what a targeted import accepts.
+export function importTemplateUrl(
+  table: ImportTable,
+  format: ExportFormat,
+  projectId?: number,
+): string {
+  const target = projectId !== undefined ? `?project=${projectId}` : '';
+  return `/api/export/template/${table}.${format}${target}`;
+}
+
+// The download URL for the project-id reference: the user's live projects and the ids to key
+// income-entry rows against. The companion to the income-entries template.
+export function projectIdsUrl(format: ExportFormat): string {
+  return `/api/export/project-ids.${format}`;
+}
+
 // Pick the upload Content-Type from the file's extension/MIME, defaulting to CSV. This drives which
 // body parser the server uses (spreadsheet MIME → binary/XLSX, everything else → text/CSV).
 function contentTypeForFile(file: File): string {

@@ -14,20 +14,48 @@ export type CompensationModel =
 // Project lifecycle statuses (§1.2). Mirrors the DB enum on projects.status.
 export type ProjectStatus = 'idea' | 'active' | 'paused' | 'ended';
 
-// The 8 canvas feelings — a closed list; keep in sync with the server enum. How the work FEELS,
-// independent of the numbers (screen 14).
-export type Feeling =
-  | 'happy'
-  | 'sad'
-  | 'miserable'
-  | 'excited'
-  | 'opportunistic'
-  | 'pessimistic'
-  | 'stressed'
-  | 'grateful';
+// The FEELING check-in — "How do you feel about it?" (§2.2, owner decision 2026-07-14). The 6
+// WRITABLE feelings, in the design's reading order (left → right the fire goes out). Closed list;
+// keep in sync with server/src/domain/constants.ts FEELINGS. These are the only values any picker
+// may offer.
+export const FEELINGS = ['excited', 'happy', 'fine', 'stressed', 'sad', 'miserable'] as const;
 
-// The 3 canvas trends — how the work is GOING. Semantic (good/stable/bad), never the red accent.
-export type Trend = 'good' | 'stable' | 'bad';
+// Retired from writes 2026-07-14 but never from reads: historic mood_events rows and old
+// projects.feeling values keep these forever, so they must still RENDER (capitalized). Never offer
+// them in a picker. Keep in sync with server LEGACY_FEELINGS.
+export const LEGACY_FEELINGS = ['grateful', 'opportunistic', 'pessimistic'] as const;
+
+// The read type covers writable ∪ legacy, because a project's feeling column or an old event may
+// still hold a legacy value. Write validation (server-side) accepts only the 6 writable ones.
+export type Feeling = (typeof FEELINGS)[number] | (typeof LEGACY_FEELINGS)[number];
+
+// The TREND check-in — "How is it going?" (§2.2). Promoted from a canvas-only annotation to a
+// prompted value; the list grew from 3 to 5 (the middle three are the historic DB values). Semantic
+// only (good via --good, stable muted, bad via --ink) — never the red accent. Keep in sync with
+// server TRENDS.
+export const TRENDS = ['thriving', 'good', 'stable', 'bad', 'failing'] as const;
+export type Trend = (typeof TRENDS)[number];
+
+// The three check-in questions a mood event can answer (§2.2, ticket 26). `feeling` and `trend` are
+// the two prompted values; `untouched` is the explicit "didn't touch it" answer — value must be
+// null, it resolves the whole row without rating anything. Mirrors the server `kind` column.
+export type MoodKind = 'feeling' | 'trend' | 'untouched';
+
+// The canvas connection types — a closed list; keep in sync with server LINK_TYPES. A link is a real
+// project relationship (screen 14), edited on the canvas but readable beyond it. `parent`: the `from`
+// project is the parent, the `to` project is the part/child. `blocks`: the `from` project is blocking
+// the `to` project from progressing. Both draw from ▸ to; no red anywhere (see design.md).
+export type LinkType = 'parent' | 'blocks';
+
+// A typed connection between two of the user's projects, from GET /api/canvas (`links`). Ids are the
+// project ids the link joins; the canvas only draws a link when BOTH endpoints are currently placed,
+// but the row survives a card's removal from the board — it is a project relationship, not decoration.
+export interface ProjectLink {
+  id: number;
+  from_project_id: number;
+  to_project_id: number;
+  type: LinkType;
+}
 
 // A project as returned by GET /api/projects and /api/projects/:id. Dates arrive as
 // YYYY-MM-DD strings; rate_amount is a decimal string (or null) — amounts stay strings
@@ -52,6 +80,9 @@ export interface Project {
   // project's numbers.
   feeling: Feeling | null;
   trend: Trend | null;
+  // The optional "what did it teach you?" note filed during the ending ritual (§2.7). Null until a
+  // project is ended with a note; never couples to deleted_at, and survives reactivation.
+  ending_note: string | null;
 }
 
 // A project row as returned by the LIST endpoint (GET /api/projects), enriched with the same
@@ -85,6 +116,9 @@ export interface ProjectPayload {
   rate_amount: number | null;
   rate_currency: string | null;
   tags: string[];
+  // Set only by the ending ritual (§2.7). Omitted by every other write path, so it is optional and
+  // never clobbers an existing note on an unrelated PATCH.
+  ending_note?: string | null;
 }
 
 // An income entry from GET /api/projects/:id/entries (newest first). `date` is YYYY-MM-DD;
@@ -197,6 +231,22 @@ export interface NoteInput {
   body_md: string;
 }
 
+// A single event in a project's mood stream (ticket 01 / §2.2, split by ticket 26). The project
+// still shows one current feeling and one current trend; underneath, every change is appended here —
+// like a bank ledger. `kind` names which question the event answers: a `feeling` event carries a
+// Feeling (or null = cleared), a `trend` event carries a Trend (or null), an `untouched` event
+// carries null ("didn't touch it"). `note` is the optional one-line "why" (stored verbatim, rides
+// any kind). `source` is manual | nudge | weekly_close. `created_at` is a real ISO timestamp.
+// Mirrors the row shape returned by server/src/routes/moods.ts.
+export interface MoodEvent {
+  id: number;
+  kind: MoodKind;
+  value: Feeling | Trend | null;
+  note: string | null;
+  source: string;
+  created_at: string;
+}
+
 // A note as returned by GET /api/notes — the cross-project journal feed (screen 10). Same shape
 // as Note plus the owning project's name, so the standalone browser can group rows by project
 // without a second lookup. Server orders by project name, then newest-touched first.
@@ -225,8 +275,10 @@ export interface CanvasItem {
   y?: number;
 }
 
-// The full canvas payload from GET /api/canvas — cards already on the board vs. still in the tray.
+// The full canvas payload from GET /api/canvas — cards already on the board vs. still in the tray,
+// plus every live project-to-project link (drawn only when both endpoints are placed, § canvas).
 export interface CanvasBoard {
   placed: CanvasItem[];
   tray: CanvasItem[];
+  links: ProjectLink[];
 }

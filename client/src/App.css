@@ -149,6 +149,23 @@ nav.main .soon {
   font-weight: 600;
 }
 
+/* Quarterly Statement ready-line (ticket 07) — one discreet, achromatic line between the dashboard
+   head and the KPI row when the newest finished quarter has a statement. No badge, no red. */
+.stmt-ready {
+  margin: 0 0 20px;
+  padding-top: 4px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.stmt-ready a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.stmt-ready a:hover {
+  color: var(--ink-2);
+}
+
 /* page heads (placeholder pages reuse the dashboard head) */
 .dash-head {
   display: flex;
@@ -1684,6 +1701,178 @@ a.rank-row:hover .n {
   font-weight: 600;
 }
 
+/* signals panel (First Signal — breaktrough.md §2.3–§2.4): a quiet list of per-project mood reads,
+   sentences only (no numbers, no charts), each row linking to its project. Red stays reserved — a
+   signal never renders in red, at rest or on hover. */
+.signals {
+  margin-top: 24px;
+}
+.signal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.signal-row {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.signal-row:first-child {
+  padding-top: 4px;
+}
+.signal-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+.signal-link {
+  display: block;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  text-decoration: none;
+  max-width: 60ch;
+}
+.signal-link:hover,
+.signal-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ink-3);
+}
+.signal-link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.signal-more {
+  margin-top: 12px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.signal-more:hover {
+  color: var(--ink);
+}
+.signal-more:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* drift nudges (§2.7) share the signal list but stack a quiet "End it →" path (attention drift
+   only) under the sentence. Never red, no badge, no count. The `divide` rule marks the boundary
+   between nudges (which prompt a decision) and the plain signal reads below. */
+.nudge-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.nudge-end {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-decoration: none;
+}
+.nudge-end:hover,
+.nudge-end:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.nudge-end:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.signal-row.divide {
+  border-top: 1px solid var(--hairline);
+  margin-top: 4px;
+  padding-top: 15px;
+}
+
+/* the Ended panel (graveyard, §2.7): an archive of finished undertakings, not a trash can. A quiet
+   row per project — lifespan + lifetime figures, an optional quoted teach-note, and a plain-text
+   Reactivate control. Nothing here is red. */
+.graveyard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.graveyard-row {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.graveyard-row:first-child {
+  padding-top: 4px;
+}
+.graveyard-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+.graveyard-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.graveyard-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.graveyard-span {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.graveyard-fig {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.graveyard-fig-k {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.graveyard-reactivate {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.graveyard-reactivate:hover {
+  color: var(--ink);
+}
+.graveyard-reactivate:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.graveyard-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+
 /* chart tooltip (verbatim from the design file's #tip) */
 .chart-tip {
   position: fixed;
@@ -1793,6 +1982,20 @@ a.tl-row:hover .tl-n {
   color: var(--red);
   border-bottom-color: var(--red);
 }
+/* concentration callout under the income breakdown (verbatim from the design file) */
+.comp-note {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  border-top: 1px solid var(--hairline);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.comp-note b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .warn-flag {
   display: inline-flex;
   align-items: center;
@@ -1878,6 +2081,30 @@ a.tl-row:hover .tl-n {
   color: var(--ink-2);
 }
 
+/* Assistant usage meter (ticket 12). Percentage line + a hairline progress bar — square, no color
+   beyond the palette (fill is --ink, never red; red stays earned by primary actions). */
+.usage-line {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0 0 10px;
+}
+.usage-line strong {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.usage-meter {
+  height: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  overflow: hidden;
+}
+.usage-fill {
+  height: 100%;
+  background: var(--ink);
+  transition: width 120ms linear;
+}
+
 /* fx-rate table + inline add row (composed from tokens) */
 .fx-table {
   margin-bottom: 16px;
@@ -1948,6 +2175,30 @@ a.tl-row:hover .tl-n {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+.import-starter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  padding: 12px 14px;
+  margin: 4px 0 14px;
+}
+.starter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.starter-label {
+  flex: 1 1 auto;
+  min-width: 190px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.import-starter .import-note {
+  margin: 0;
 }
 .import-controls {
   display: flex;
@@ -2035,9 +2286,181 @@ a.tl-row:hover .tl-n {
   margin: 12px 0 4px;
 }
 
+/* ————— scenario / what-if panel (design screen 12) —————
+   Ported verbatim from the design file (.scn family + range slider + .eyebrow),
+   with the panel wrapped in the shared .panel border and a small chip-style select
+   reusing the same hairline/square-corner tokens as the static .scn-move chips. */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+.scn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 24px;
+}
+.scn-left {
+  padding: 28px 32px;
+  border-right: 1px solid var(--hairline);
+}
+.scn-right {
+  padding: 28px 32px;
+  background: var(--paper);
+}
+.scn h4 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+.scn .desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0 0 22px;
+  max-width: 46ch;
+}
+.scn-move {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.scn-move b {
+  border: 1px solid var(--hairline);
+  padding: 6px 12px;
+  font-weight: 600;
+  background: var(--surface);
+}
+.scn-move .hrs {
+  font-weight: 700;
+  color: var(--red);
+  font-variant-numeric: tabular-nums;
+  min-width: 78px;
+  text-align: center;
+  border-color: var(--red);
+}
+.scn-sel {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  border-radius: 0;
+  padding: 6px 30px 6px 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2355534f' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.scn-sel:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+input[type='range'].sld {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 2px;
+  background: var(--hairline);
+  margin: 18px 0 8px;
+}
+input[type='range'].sld::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px var(--red);
+  cursor: pointer;
+}
+input[type='range'].sld::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--red);
+  cursor: pointer;
+}
+input[type='range'].sld:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 6px;
+}
+.sld-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.scn-out {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.scn-out .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grid);
+  font-size: 13.5px;
+}
+.scn-out .row span:first-child {
+  color: var(--ink-2);
+}
+.scn-out .row b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.scn-out .big {
+  border-bottom: 0;
+  padding-top: 18px;
+}
+.scn-out .big b {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--good);
+}
+.scn-out .big b.flat {
+  /* a zero shift is neutral, never green */
+  color: var(--ink);
+}
+.scn-fine {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  margin-top: 10px;
+}
+/* quiet fallback when fewer than two projects have an effective rate */
+.scn-empty {
+  padding: 28px 32px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
 @media (max-width: 960px) {
   .cols {
     grid-template-columns: 1fr;
+  }
+  .scn {
+    grid-template-columns: 1fr;
+  }
+  .scn-left {
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
   }
   .kpis {
     grid-template-columns: 1fr 1fr;
@@ -2090,5 +2513,160 @@ a.tl-row:hover .tl-n {
     border-right: 0;
     border-bottom: 1px solid var(--hairline);
     min-height: 220px;
+  }
+}
+
+/* ————— pricing page (design screen 08), extended to three plans —————
+   Ported from the design file's .price-* family. The hosted highlight is the
+   paper-tinted background only; the page's single red element is the Pro
+   primary CTA (.btn.primary). The monthly/annual toggle uses the non-red
+   ink-selection idiom (cf. .qa-date.on) so red stays reserved for that CTA. */
+.price-page {
+  padding: 56px 0 72px;
+}
+.price-intro {
+  max-width: 560px;
+  margin-bottom: 26px;
+}
+.price-intro h3 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 10px 0 8px;
+  text-wrap: balance;
+}
+.price-intro p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+/* monthly / annual toggle — square segmented control, ink selection (no red) */
+.price-toggle {
+  display: inline-flex;
+  margin: 0 0 28px;
+}
+.price-toggle button {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 18px;
+  cursor: pointer;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  margin-left: -1px;
+}
+.price-toggle button:first-child {
+  margin-left: 0;
+}
+.price-toggle button:hover {
+  color: var(--ink);
+}
+.price-toggle button[aria-pressed='true'] {
+  position: relative;
+  z-index: 1;
+  border-color: var(--ink);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--hairline);
+}
+.price-grid-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.price-col {
+  display: flex;
+  flex-direction: column;
+  padding: 32px 34px 30px;
+}
+.price-col + .price-col {
+  border-left: 1px solid var(--hairline);
+}
+.price-col.hosted {
+  background: var(--paper);
+}
+.price-col .p-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.price-col .p-amt {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 12px 0 2px;
+}
+.price-col .p-amt small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-3);
+  letter-spacing: 0;
+}
+.price-col .p-save {
+  min-height: 18px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.price-col .p-sub {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0 0 20px;
+}
+.p-feats {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+}
+.p-feats li {
+  position: relative;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  padding: 9px 0 9px 22px;
+  border-top: 1px solid var(--grid);
+}
+.p-feats li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 15px;
+  width: 8px;
+  height: 5px;
+  border: solid var(--ink-3);
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg);
+}
+.p-feats li b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.price-col .btn {
+  margin-top: auto;
+  width: 100%;
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .price-page {
+    padding: 36px 0 52px;
+  }
+  .price-grid,
+  .price-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .price-col + .price-col {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
   }
 }

@@ -6,8 +6,9 @@
 // 5xx, refusal, malformed JSON) degrades to the Step-3 rules parser so the caller never 5xxs
 // because the LLM hiccuped. The key and model name are never exposed to the client.
 
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
 import { env } from '../env.js';
+import { callLLM } from '../llm/gateway.js';
 import { parseTranscript, type ParsedDraft, type ParsedProject } from './parse.js';
 
 // True iff a key is present. GET /api/voice/capabilities returns exactly this boolean — never the
@@ -120,10 +121,15 @@ function normalizeLlmDraft(
 }
 
 // Structure a transcript with the LLM when a key is present, otherwise (and on ANY error) fall
-// back to the rules parser. Exactly one model call per parse.
+// back to the rules parser. Exactly one model call per parse, made through the metering gateway
+// (ticket 12) as feature `voice_parse` so the call is counted against the user's budget. The
+// gateway sets the model; a BudgetExceededError (the capped user is past the pipeline reserve) is
+// just another failure here — it degrades to the rules parser like any timeout/429/5xx, so a capped
+// user's voice capture still works, only with `source: 'rules'`.
 export async function structureTranscript(
   transcript: string,
   projects: ParsedProject[],
+  userId: number,
   now: Date = new Date(),
 ): Promise<ParsedDraft> {
   if (!env.anthropicApiKey) {
@@ -131,16 +137,18 @@ export async function structureTranscript(
   }
 
   try {
-    const client = new Anthropic({ apiKey: env.anthropicApiKey });
-    const res = await client.messages.create({
-      model: env.voiceLlmModel,
-      max_tokens: 2048,
-      output_config: {
-        effort: 'low',
-        format: { type: 'json_schema', schema: PARSED_DRAFT_SCHEMA },
+    const res = await callLLM({
+      userId,
+      feature: 'voice_parse',
+      request: {
+        max_tokens: 2048,
+        output_config: {
+          effort: 'low',
+          format: { type: 'json_schema', schema: PARSED_DRAFT_SCHEMA },
+        },
+        system: buildSystemPrompt(projects, now),
+        messages: [{ role: 'user', content: transcript }],
       },
-      system: buildSystemPrompt(projects, now),
-      messages: [{ role: 'user', content: transcript }],
     });
 
     const textBlock = res.content.find(
@@ -153,8 +161,8 @@ export async function structureTranscript(
     const parsed = JSON.parse(textBlock.text) as Record<string, unknown>;
     return normalizeLlmDraft(parsed, projects);
   } catch (err) {
-    // Timeout, 429, 5xx, refusal, malformed JSON — degrade to rules. The caller must NEVER 5xx
-    // because the LLM hiccuped.
+    // Timeout, 429, 5xx, refusal, malformed JSON, or BudgetExceededError — degrade to rules. The
+    // caller must NEVER 5xx because the LLM hiccuped or the user hit their cap.
     console.error('[voice] LLM structuring failed; falling back to rules parser:', err);
     return parseTranscript(transcript, projects, now);
   }

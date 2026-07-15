@@ -11,7 +11,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { Dashboard, Suggestion } from '../api/dashboard';
 import { getDashboard, getSuggestions } from '../api/dashboard';
+import type { Nudge, Signal } from '../api/signals';
+import { getSignals } from '../api/signals';
 import { listProjectTypes } from '../api/projects';
+import type { StatementPeriod } from '../api/statement';
+import { getStatementPeriods } from '../api/statement';
 import type { ProjectType } from '../types';
 import { KpiRow } from '../components/dashboard/KpiRow';
 import { RankingPanel } from '../components/dashboard/RankingPanel';
@@ -20,6 +24,9 @@ import { TrendChart } from '../components/dashboard/TrendChart';
 import { CompositionBar } from '../components/dashboard/CompositionBar';
 import { Timeline } from '../components/dashboard/Timeline';
 import { MissingRatesNotice } from '../components/dashboard/MissingRatesNotice';
+import { WeeklyRitual } from '../components/close/WeeklyRitual';
+import { SignalsPanel } from '../components/dashboard/SignalsPanel';
+import { ScenarioPanel } from '../components/dashboard/ScenarioPanel';
 
 // The trend/timeline/composition window options (months). The server clamps 1–36; the UI offers
 // the three the design calls for and defaults to 6.
@@ -39,9 +46,13 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Suggestions and type labels load independently — neither can break the dashboard.
+  // Suggestions, signals and type labels load independently — none can break the dashboard.
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [nudges, setNudges] = useState<Nudge[]>([]);
   const [types, setTypes] = useState<ProjectType[]>([]);
+  // The newest fully-elapsed quarter, if one has a statement — drives the discreet "ready" line.
+  const [readyStatement, setReadyStatement] = useState<StatementPeriod | null>(null);
 
   // Re-fetch the dashboard whenever the window changes. Keep the previous payload on screen while
   // refetching so switching windows doesn't blank the page.
@@ -72,9 +83,30 @@ export function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    // Same independent-fetch pattern: a failure here shows no Signals panel, never blocks the page.
+    getSignals()
+      .then((res) => {
+        setSignals(res.signals);
+        setNudges(res.nudges);
+      })
+      .catch(() => {
+        setSignals([]);
+        setNudges([]);
+      });
+  }, []);
+
+  useEffect(() => {
     listProjectTypes()
       .then(setTypes)
       .catch(() => setTypes([]));
+  }, []);
+
+  useEffect(() => {
+    // Optional garnish (periods come newest-first): surface only the most recent finished quarter,
+    // and only when one exists. A failure simply shows no line.
+    getStatementPeriods()
+      .then((res) => setReadyStatement(res.periods.find((p) => p.finished) ?? null))
+      .catch(() => setReadyStatement(null));
   }, []);
 
   const typeLabels = useMemo(() => {
@@ -160,6 +192,7 @@ export function DashboardPage() {
     return (
       <div>
         {header}
+        <WeeklyRitual />
         <div className="panel">
           <div className="table-empty">
             <p>
@@ -180,6 +213,15 @@ export function DashboardPage() {
   return (
     <div className={loading ? 'dash-loading' : undefined}>
       {header}
+
+      {readyStatement && (
+        <p className="stmt-ready">
+          Your {readyStatement.label} statement is ready.{' '}
+          <Link to={`/statement/${readyStatement.period}`}>View statement →</Link>
+        </p>
+      )}
+
+      <WeeklyRitual />
 
       <MissingRatesNotice currencies={warnings.missing_rates} />
 
@@ -223,6 +265,8 @@ export function DashboardPage() {
 
       <FocusCallout suggestions={suggestions} nameById={nameById} />
 
+      <SignalsPanel signals={signals} nudges={nudges} />
+
       <div className="cols">
         <div className="panel">
           <div className="panel-h">
@@ -250,6 +294,10 @@ export function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Scenario mode (design screen 12) — a client-side "What if" on the same rankings, mounted
+          last. Uses the full-portfolio revenue ranking so the baseline sums every project. */}
+      <ScenarioPanel rankings={rankings.by_monthly_revenue} baseCurrency={base_currency} />
     </div>
   );
 }

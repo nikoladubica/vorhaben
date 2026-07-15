@@ -12,16 +12,24 @@ import { projectEntriesRouter, entriesRouter } from './routes/incomeEntries.js';
 import { projectExpensesRouter, expensesRouter } from './routes/expenseEntries.js';
 import { projectTimeLogsRouter, timeLogsRouter } from './routes/timeLogs.js';
 import { projectNotesRouter, notesRouter } from './routes/notes.js';
+import { projectMoodsRouter, moodsRouter } from './routes/moods.js';
 import { canvasRouter } from './routes/canvas.js';
 import { fxRatesRouter } from './routes/fxRates.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { signalsRouter } from './routes/signals.js';
+import { matrixRouter } from './routes/matrix.js';
+import { closesRouter } from './routes/closes.js';
+import { statementsRouter } from './routes/statements.js';
 import { accountRouter } from './routes/account.js';
+import { settingsRouter } from './routes/settings.js';
 import { tagsRouter } from './routes/tags.js';
 import { exportRouter, importRouter } from './routes/exportImport.js';
 import { voiceRouter } from './routes/voice.js';
+import { invoicesRouter } from './routes/invoices.js';
 import { checklistsRouter, checklistItemsRouter } from './routes/checklists.js';
 import { remindersRouter } from './routes/reminders.js';
 import { eventsRouter } from './routes/events.js';
+import { digestRouter } from './routes/digest.js';
 
 export const app = express();
 
@@ -36,6 +44,9 @@ app.use(cookieParser());
 
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
+// Monthly email digest (ticket 16). PUBLIC, no auth: the unsubscribe link is clicked from an inbox
+// and authenticates by its unguessable per-user token alone. Opt-out only — it can never enable mail.
+app.use('/api/digest', digestRouter);
 app.use('/api/projects', requireAuth, projectsRouter);
 // Nested income-entry routes (/:id/entries) share the /api/projects mount; /:id is a single
 // segment so it never captures /:id/entries, and projectsRouter falls through to here.
@@ -49,6 +60,9 @@ app.use('/api/projects', requireAuth, projectTimeLogsRouter);
 // Nested note routes (/:id/notes) share the /api/projects mount, same pattern again: /:id is a
 // single segment so it never captures /:id/notes.
 app.use('/api/projects', requireAuth, projectNotesRouter);
+// Nested mood-stream routes (/:id/moods) share the /api/projects mount, same single-segment /:id
+// pattern, so /:id never captures /:id/moods.
+app.use('/api/projects', requireAuth, projectMoodsRouter);
 // Canvas board: card placement + tray. Placed/tray cards reuse the projects/notes/metrics data,
 // so this mounts alongside the other project-related routers.
 app.use('/api/canvas', requireAuth, canvasRouter);
@@ -57,15 +71,40 @@ app.use('/api/entries', requireAuth, entriesRouter);
 app.use('/api/expenses', requireAuth, expensesRouter);
 app.use('/api/time-logs', requireAuth, timeLogsRouter);
 app.use('/api/notes', requireAuth, notesRouter);
+// Mood stream: /moods/today drives the in-app daily nudge (in-app only — never push/email).
+app.use('/api/moods', requireAuth, moodsRouter);
 app.use('/api/fx-rates', requireAuth, fxRatesRouter);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
+// Mood analysis engine + First Signal (breaktrough.md §2.3–§2.4). On-demand per-project signals,
+// read next to effective hourly rate; pure heuristics, no LLM, identical self-hosted and hosted.
+app.use('/api/signals', requireAuth, signalsRouter);
+// Worth-It Matrix read model (breaktrough.md §2.6). Combined per-project rate + monthly hours +
+// trend_score + swing + confidence + First Signal sentence for EVERY active project (plottable or
+// not), plus the portfolio median rate. On demand, user-scoped and soft-delete aware.
+app.use('/api/matrix', requireAuth, matrixRouter);
+// Weekly Close ritual (breaktrough.md §2.5). /current is the banner + page read-model; POST records
+// an idempotent completion; /settings persists the close-day preference. Every query is user-scoped
+// and soft-delete aware.
+app.use('/api/closes', requireAuth, closesRouter);
+// Quarterly Statement (breaktrough.md §2.8). Computed on demand, never stored: /:period returns the
+// full quarter model (portfolio + narrative + one recommendation), / lists the periods with data.
+// Every query is user-scoped and soft-delete aware; all money is converted server-side.
+app.use('/api/statements', requireAuth, statementsRouter);
 app.use('/api/account', requireAuth, accountRouter);
+// Assistant settings (ticket 13): the caller's hosted plan (read-only) + their optional encrypted
+// bring-your-own assistant API key. User-scoped via req.userId; the key is never returned.
+app.use('/api/settings', requireAuth, settingsRouter);
 app.use('/api/tags', requireAuth, tagsRouter);
 // Voice capture (§ voice-capture). Transcript parsing (side-effect free) + capability probe, then
 // the four persist endpoints for the reviewed drafts. Each scopes rows by req.userId; a capture may
 // be filed against a project or left unassigned. checklist-items has its own flat mount for the
 // check/uncheck endpoint, mirroring the notes/single-note router split.
 app.use('/api/voice', requireAuth, voiceRouter);
+// Invoice scanner (ticket 14, Max tier). /scan takes a raw file upload (its own express.raw parser
+// with a 10 MB ceiling lives on the route); /capabilities gates the feature client-side. Entitlement
+// (Max plan or BYOK parity) and the monthly scan-count cap are enforced in the route; the one LLM
+// call routes through the ticket-12 gateway. Stateless apart from the gateway's metering row.
+app.use('/api/invoices', requireAuth, invoicesRouter);
 app.use('/api/checklists', requireAuth, checklistsRouter);
 app.use('/api/checklist-items', requireAuth, checklistItemsRouter);
 app.use('/api/reminders', requireAuth, remindersRouter);

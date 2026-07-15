@@ -44,7 +44,7 @@ voiceRouter.post('/parse', async (req, res) => {
   const projects = rows.map((r) => ({ id: Number(r.id), name: String(r.name) }));
 
   const draft = isLlmAvailable()
-    ? await structureTranscript(transcript, projects)
+    ? await structureTranscript(transcript, projects, userId)
     : parseTranscript(transcript, projects);
 
   res.json(draft);

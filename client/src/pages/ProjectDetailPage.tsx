@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { Project, ProjectMetrics, ProjectPayload, ProjectStatus, ProjectType } from '../types';
 import { getProject, getProjectMetrics, listProjectTypes, updateProject } from '../api/projects';
+import type { Signal } from '../api/signals';
+import { getSignals } from '../api/signals';
 import { COMPENSATION_CONFIG, modelHasAmount } from '../domain/compensation';
 import { formatFullDate, formatMoney, formatMonthYear, todayString } from '../domain/format';
 import { StatusBadge } from '../components/projects/StatusBadge';
@@ -15,6 +17,7 @@ import { EntriesSection } from '../components/entries/EntriesSection';
 import { ExpensesSection } from '../components/entries/ExpensesSection';
 import { TimeLogsSection } from '../components/entries/TimeLogsSection';
 import { NotesSection } from '../components/notes/NotesSection';
+import { MoodSection } from '../components/mood/MoodSection';
 import { ProjectDataSection } from '../components/projects/ProjectDataSection';
 import { ProjectKpiBar } from '../components/projects/ProjectKpiBar';
 
@@ -89,10 +92,12 @@ export function ProjectDetailPage() {
   // Normalized revenue / expenses / net summary (§8). Optional garnish, like the dashboard's
   // suggestions: a failed fetch simply hides the line and never blocks the rest of the screen.
   const [metrics, setMetrics] = useState<ProjectMetrics | null>(null);
+  // This project's own First Signal, if the engine has one to say. Optional garnish, like metrics:
+  // the endpoint is per-user (no per-project variant), so we fetch the list and pick our project.
+  const [signal, setSignal] = useState<Signal | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [confirmEnd, setConfirmEnd] = useState(false);
   // Bumped when the time-log panel creates an income entry, so the income panel reloads (its
   // reload calls onChanged, which refreshes the header metrics in turn).
   const [entriesReload, setEntriesReload] = useState(0);
@@ -133,6 +138,21 @@ export function ProjectDetailPage() {
       .then(setTypes)
       .catch(() => setTypes([]));
   }, []);
+
+  useEffect(() => {
+    if (projectId === null || !Number.isInteger(projectId)) return;
+    let cancelled = false;
+    getSignals()
+      .then((res) => {
+        if (!cancelled) setSignal(res.signals.find((s) => s.project_id === projectId) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSignal(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   // Reload the normalized summary. Passed to both entry sections as `onChanged` so the figures
   // stay in step with income/expense edits. The metrics use the canonical trailing-3-month window
@@ -249,28 +269,11 @@ export function ProjectDetailPage() {
           >
             {toggleLabel}
           </button>
-          {confirmEnd ? (
-            <span className="pd-confirm">
-              <span>End this project?</span>
-              <button
-                type="button"
-                className="btn ghost sm danger"
-                onClick={() => {
-                  void applyStatus({ end_date: todayString() });
-                  setConfirmEnd(false);
-                }}
-              >
-                End project
-              </button>
-              <button type="button" className="btn ghost sm" onClick={() => setConfirmEnd(false)}>
-                Cancel
-              </button>
-            </span>
-          ) : (
-            <button type="button" className="btn ghost sm" onClick={() => setConfirmEnd(true)}>
-              End project
-            </button>
-          )}
+          {/* The ending ritual (§2.7): a first-class closing screen, not a confirm dialog. It runs
+              the same status write path (PATCH end_date = today) via updateProject, never a fork. */}
+          <Link className="btn ghost sm" to={`/projects/${project.id}/end`}>
+            End project
+          </Link>
         </div>
       </div>
 
@@ -337,6 +340,12 @@ export function ProjectDetailPage() {
         </div>
 
         <div className="pd-col">
+          <MoodSection
+            projectId={project.id}
+            feeling={project.feeling}
+            trend={project.trend}
+            signal={signal}
+          />
           <div className="panel">
             <div className="panel-h">
               <span className="t">Compensation</span>

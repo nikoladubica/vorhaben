@@ -5,13 +5,17 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Install deps first for better layer caching. Copy every workspace manifest so
-# `npm ci` can resolve the workspace graph.
+# `npm ci` can resolve the workspace graph — a missing one is not an error, it just
+# leaves that workspace's node_modules unpopulated and fails later, at its build.
 COPY package.json package-lock.json ./
 COPY client/package.json ./client/package.json
 COPY server/package.json ./server/package.json
+COPY mcp/package.json ./mcp/package.json
 RUN npm ci
 
-# Copy the source and build both workspaces (server: tsc -> dist, client: vite build).
+# Copy the source and build every workspace (server: tsc -> dist, client: vite build,
+# mcp: tsc -> dist). Only server/dist and client/dist are carried into the runtime image;
+# the mcp adapter is a stdio binary run by the user's own MCP client, not by this container.
 COPY . .
 RUN npm run build
 
@@ -25,6 +29,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 COPY client/package.json ./client/package.json
 COPY server/package.json ./server/package.json
+COPY mcp/package.json ./mcp/package.json
 RUN npm ci --omit=dev
 
 # Compiled server (includes dist/db/migrations) and the static client bundle.

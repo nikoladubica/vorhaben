@@ -27,6 +27,7 @@ export function LandingPage() {
           <a href="#how-it-works">How it works</a>
           <a href="#voice">Voice capture</a>
           <a href="#open-source">Open source</a>
+          <Link to="/pricing">Pricing</Link>
         </nav>
         <div className="ld-top-actions">
           <Link className="ld-signin" to="/login">
@@ -59,6 +60,9 @@ export function LandingPage() {
             <a href="#open-source" onClick={() => setMenuOpen(false)}>
               Open source
             </a>
+            <Link to="/pricing" onClick={() => setMenuOpen(false)}>
+              Pricing
+            </Link>
             <Link to="/login">Sign in</Link>
             <Link className="ld-menu-cta" to="/register">
               Start free

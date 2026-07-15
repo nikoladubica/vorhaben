@@ -2,7 +2,9 @@ import { Router } from 'express';
 import type { Knex } from 'knex';
 import { db } from '../db/index.js';
 import { assertProjectOwned } from '../domain/ownership.js';
-import { ensureExpectedEntries } from '../domain/expectedEntries.js';
+import { ensureExpectedEntries, isSalaried } from '../domain/expectedEntries.js';
+import { convert, loadRates } from '../domain/fx.js';
+import type { CompensationModel } from '../domain/constants.js';
 
 // Two routers: the nested one is mounted alongside projectsRouter at /api/projects and owns
 // the `/:id/entries` paths; the flat one is mounted at /api/entries and owns single-entry
@@ -83,8 +85,7 @@ interface ValidatedEntryColumns {
 }
 
 type EntryValidationResult =
-  | { ok: true; value: ValidatedEntryColumns }
-  | { ok: false; fields: Record<string, string> };
+  { ok: true; value: ValidatedEntryColumns } | { ok: false; fields: Record<string, string> };
 
 /**
  * Validate a create (partial=false) or update (partial=true) request body. On PATCH only
@@ -259,10 +260,7 @@ projectEntriesRouter.post('/:id/entries', async (req, res) => {
 
 // Confirm an entry belongs to an owned, non-soft-deleted project. Returns the entry id or
 // undefined (→ 404). Reads and writes on a soft-deleted project both 404.
-async function findOwnedEntryId(
-  userId: number,
-  entryId: number,
-): Promise<number | undefined> {
+async function findOwnedEntryId(userId: number, entryId: number): Promise<number | undefined> {
   const row = await db('income_entries as e')
     .join('projects as p', 'p.id', 'e.project_id')
     .where('e.id', entryId)
@@ -271,6 +269,162 @@ async function findOwnedEntryId(
     .first('e.id as id');
   return row ? Number((row as { id: number }).id) : undefined;
 }
+
+// ---------------------------------------------------------------------------
+// Cross-project monthly view: GET /api/entries?from=&to=  (income screen, design 11)
+// ---------------------------------------------------------------------------
+
+// Two-digit zero-pad for month/day parts.
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+// Inclusive first/last calendar day of the UTC month containing `now`, as 'YYYY-MM-DD' strings.
+function currentMonthRange(now: Date): { from: string; to: string } {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth(); // 0-based
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return { from: `${y}-${pad2(m + 1)}-01`, to: `${y}-${pad2(m + 1)}-${pad2(lastDay)}` };
+}
+
+// Sum a list of fixed-2-decimal base-currency strings into integer cents (no float drift on the
+// grand total). Each `converted` amount is already in base currency, so summing them is valid.
+function sumCents(values: string[]): number {
+  let cents = 0;
+  for (const value of values) {
+    const n = Number(value);
+    if (Number.isFinite(n)) cents += Math.round(n * 100);
+  }
+  return cents;
+}
+
+interface MonthEntryRow {
+  id: number;
+  project_id: number;
+  date: string;
+  amount: string;
+  currency: string;
+  note: string | null;
+  source: 'manual' | 'expected';
+}
+
+// GET /api/entries?from=&to= — every income entry across the caller's owned, non-deleted projects
+// within the inclusive range (defaults to the current calendar month). Amounts are summed in the
+// user's base currency SERVER-SIDE (convert + loadRates, as metrics.ts does) so the client never
+// sums mixed currencies. Returns the newest-first entry list, per-project totals + shares, and the
+// grand total.
+entriesRouter.get('/', async (req, res) => {
+  const userId = req.userId as number;
+
+  const def = currentMonthRange(new Date());
+  let { from, to } = def;
+
+  const { from: rawFrom, to: rawTo } = req.query;
+  const fields: Record<string, string> = {};
+  if (typeof rawFrom === 'string' && rawFrom !== '') {
+    if (!isValidDate(rawFrom)) fields.from = 'invalid';
+    else from = rawFrom;
+  }
+  if (typeof rawTo === 'string' && rawTo !== '') {
+    if (!isValidDate(rawTo)) fields.to = 'invalid';
+    else to = rawTo;
+  }
+  if (Object.keys(fields).length > 0) {
+    res.status(422).json({ error: 'validation', fields });
+    return;
+  }
+
+  // Owned, non-deleted projects only — ownership of entries flows through this set.
+  const projects = await db('projects')
+    .where('user_id', userId)
+    .whereNull('deleted_at')
+    .select<Array<{ id: number; name: string; compensation_model: CompensationModel }>>(
+      'id',
+      'name',
+      'compensation_model',
+    );
+
+  const user = await db('users').where('id', userId).first('base_currency');
+  const baseCurrency = (user as { base_currency: string } | undefined)?.base_currency ?? 'EUR';
+
+  if (projects.length === 0) {
+    res.json({ base_currency: baseCurrency, from, to, entries: [], by_project: [], total: '0.00' });
+    return;
+  }
+
+  // Materialize any missing expected entries for salaried projects (a no-op otherwise) BEFORE the
+  // select, so auto-generated salary rows appear in the month like they do on the project screen.
+  for (const project of projects) {
+    if (isSalaried(project.compensation_model)) {
+      await ensureExpectedEntries(project.id);
+    }
+  }
+
+  const projectIds = projects.map((p) => p.id);
+  const nameById = new Map(projects.map((p) => [p.id, p.name]));
+
+  const rows = await db('income_entries')
+    .whereIn('project_id', projectIds)
+    .andWhere('date', '>=', from)
+    .andWhere('date', '<=', to)
+    .select<MonthEntryRow[]>(
+      'id',
+      'project_id',
+      db.raw("DATE_FORMAT(date, '%Y-%m-%d') as date"),
+      'amount',
+      'currency',
+      'note',
+      'source',
+    )
+    // Newest first; id as a stable tiebreak within a day.
+    .orderBy('date', 'desc')
+    .orderBy('id', 'desc');
+
+  const rates = await loadRates(baseCurrency);
+
+  // Convert each entry to base currency at its own date; carry the original amount/currency too.
+  const entries = rows.map((row) => {
+    const conversion = convert(row.amount, row.currency, baseCurrency, row.date, rates);
+    return {
+      id: row.id,
+      date: row.date,
+      project_id: row.project_id,
+      name: nameById.get(row.project_id) ?? '',
+      note: row.note,
+      amount: row.amount,
+      currency: row.currency,
+      source: row.source,
+      converted: conversion.converted,
+      missing_rate: conversion.missing_rate,
+    };
+  });
+
+  const totalCents = sumCents(entries.map((e) => e.converted));
+
+  // Per-project base-currency totals + 0–1 share of the grand total, largest first.
+  const centsByProject = new Map<number, number>();
+  for (const entry of entries) {
+    const prev = centsByProject.get(entry.project_id) ?? 0;
+    centsByProject.set(entry.project_id, prev + Math.round(Number(entry.converted) * 100));
+  }
+  const by_project = [...centsByProject.entries()]
+    .map(([project_id, cents]) => ({
+      project_id,
+      name: nameById.get(project_id) ?? '',
+      total: (cents / 100).toFixed(2),
+      share: totalCents !== 0 ? cents / totalCents : 0,
+    }))
+    .sort((a, b) => b.share - a.share);
+
+  res.json({
+    base_currency: baseCurrency,
+    from,
+    to,
+    entries,
+    by_project,
+    total: (totalCents / 100).toFixed(2),
+  });
+});
 
 // PATCH /api/entries/:id — partial update; currency cannot be defaulted or cleared here.
 entriesRouter.patch('/:id', async (req, res) => {
@@ -298,7 +452,9 @@ entriesRouter.patch('/:id', async (req, res) => {
   if (Object.keys(result.value).length > 0) {
     // Adjusting an entry confirms it: an expected entry the user edits becomes manual so
     // regeneration never touches it again. A manual entry stays manual (no-op).
-    await db('income_entries').where('id', id).update({ ...result.value, source: 'manual' });
+    await db('income_entries')
+      .where('id', id)
+      .update({ ...result.value, source: 'manual' });
   }
 
   const updated = await entrySelect(db).where('id', id).first();
@@ -351,8 +507,7 @@ entriesRouter.delete('/:id', async (req, res) => {
       'e.project_id as project_id',
       db.raw("DATE_FORMAT(e.date, '%Y-%m-%d') as date"),
     )) as
-    | { id: number; source: 'manual' | 'expected'; project_id: number; date: string }
-    | undefined;
+    { id: number; source: 'manual' | 'expected'; project_id: number; date: string } | undefined;
   if (owned === undefined) {
     res.status(404).json({ error: 'not_found' });
     return;

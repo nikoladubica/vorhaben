@@ -3,8 +3,8 @@ import type { Knex } from 'knex';
 import { db } from '../db/index.js';
 import {
   COMPENSATION_MODELS,
-  FEELINGS,
-  TRENDS,
+  isWritableFeeling,
+  isTrend,
   type CompensationModel,
   type Feeling,
   type ProjectStatus,
@@ -13,6 +13,7 @@ import {
 import { deriveStatus, flagFromStatus, type StatusFlag } from '../domain/projectStatus.js';
 import { syncProjectTags } from '../db/tags.js';
 import { computeMetricsForUser } from '../domain/metrics.js';
+import { recordMood } from '../domain/mood.js';
 
 export const projectsRouter = Router();
 
@@ -36,6 +37,7 @@ interface ProjectRow {
   rate_currency: string | null;
   feeling: string | null;
   trend: string | null;
+  ending_note: string | null;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -77,6 +79,7 @@ function projectQuery(executor: Knex | Knex.Transaction) {
       'p.rate_currency',
       'p.feeling',
       'p.trend',
+      'p.ending_note',
       'p.created_at',
       'p.updated_at',
       'p.deleted_at',
@@ -124,6 +127,7 @@ interface ValidatedColumns {
   rate_currency?: string | null;
   feeling?: Feeling | null;
   trend?: Trend | null;
+  ending_note?: string | null;
 }
 
 interface ValidatedInput {
@@ -265,27 +269,41 @@ async function validateProjectInput(
     }
   }
 
-  // feeling (self-reported canvas annotation; null/undefined clears it) ---
+  // feeling (self-reported check-in; null/undefined clears it). Only the WRITABLE FEELINGS list is
+  // accepted — legacy feelings are read-only, so a client sending one gets a 422 (ticket 26).
   if (provided('feeling')) {
     const raw = body.feeling;
     if (raw === null || raw === undefined) {
       columns.feeling = null;
-    } else if (typeof raw !== 'string' || !FEELINGS.includes(raw as Feeling)) {
+    } else if (typeof raw !== 'string' || !isWritableFeeling(raw)) {
       fields.feeling = 'invalid';
     } else {
-      columns.feeling = raw as Feeling;
+      columns.feeling = raw;
     }
   }
 
-  // trend (self-reported canvas annotation; NOT the computed revenue trend) --
+  // trend (self-reported check-in; NOT the computed revenue trend). The 5-value TRENDS list.
   if (provided('trend')) {
     const raw = body.trend;
     if (raw === null || raw === undefined) {
       columns.trend = null;
-    } else if (typeof raw !== 'string' || !TRENDS.includes(raw as Trend)) {
+    } else if (typeof raw !== 'string' || !isTrend(raw)) {
       fields.trend = 'invalid';
     } else {
-      columns.trend = raw as Trend;
+      columns.trend = raw;
+    }
+  }
+
+  // ending_note (the ending ritual's optional "what did it teach you?"; §2.7 step 2). Free text,
+  // like description; null/undefined clears it. Persisted on the same PATCH that sets the end date.
+  if (provided('ending_note')) {
+    const raw = body.ending_note;
+    if (raw === null || raw === undefined) {
+      columns.ending_note = null;
+    } else if (typeof raw !== 'string') {
+      fields.ending_note = 'invalid';
+    } else {
+      columns.ending_note = raw;
     }
   }
 
@@ -556,15 +574,32 @@ projectsRouter.patch('/:id', async (req, res) => {
     today: todayString(),
   });
 
+  // Both the `feeling` and `trend` writes go through the mood stream, never straight to the column:
+  // setting either now appends (or, inside its own per-kind settling window, edits) a mood_events
+  // row AND updates the matching denormalized column (projects.feeling / projects.trend) — in this
+  // same transaction so the column and the stream never disagree. Every other column is written
+  // directly as before. The canvas client is unchanged: it still PATCHes `{ feeling }` / `{ trend }`;
+  // those columns just gained a memory. Validation and the 422 shape are untouched (both are already
+  // validated above against their closed lists).
+  const feelingProvided = Object.prototype.hasOwnProperty.call(columns, 'feeling');
+  const trendProvided = Object.prototype.hasOwnProperty.call(columns, 'trend');
+  const { feeling, trend, ...otherColumns } = columns;
+
   const updated = await db.transaction(async (trx) => {
     await trx('projects')
       .where({ id, user_id: userId })
       .whereNull('deleted_at')
       .update({
-        ...columns,
+        ...otherColumns,
         status,
         updated_at: trx.fn.now(),
       });
+    if (feelingProvided) {
+      await recordMood(userId, id, feeling ?? null, { source: 'manual', kind: 'feeling' }, trx);
+    }
+    if (trendProvided) {
+      await recordMood(userId, id, trend ?? null, { source: 'manual', kind: 'trend' }, trx);
+    }
     if (tagsProvided) {
       await syncProjectTags(trx, userId, id, tags);
     }

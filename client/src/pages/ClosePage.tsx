@@ -1,0 +1,548 @@
+// The Weekly Close flow (ticket 04 / §2.5) — the anchor habit. A calm, once-a-week guided walk of
+// the active projects, one per step, ending on a one-screen summary whose "Close the week" button
+// PERSISTS the completion (so the Quarterly Statement can cite closes and drift alerts can lean on
+// close-to-close readings — a localStorage flag couldn't do either).
+//
+// Tone rules are binding: no streaks, no badges, no counters, no guilt copy. Missed weeks cost
+// nothing. The walk is skippable and abortable at any step — a feeling tapped on a step is written
+// immediately (source 'weekly_close') so partial progress is simply kept; only the final button
+// records the close. Moods go through the ONE mood write path (logProjectMood), never a parallel
+// route; time/income catch-ups deep-link the existing project forms rather than writing here.
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import type { Feeling, MoodKind, Trend } from '../types';
+import type { CloseCurrent, CloseProject } from '../api/closes';
+import { getCloseCurrent, recordClose } from '../api/closes';
+import type { Signal } from '../api/signals';
+import { getSignals } from '../api/signals';
+import { getMoodToday, logProjectMood } from '../api/moods';
+import { formatHours, formatMoney } from '../domain/format';
+import { CheckInRow } from '../components/mood/CheckInRow';
+import './close.css';
+
+// "2026-W28" → "Week 28 · 2026" for the stage title.
+function periodLabel(period: string): string {
+  const [year, week] = period.split('-W');
+  if (!year || !week) return period;
+  return `Week ${Number(week)} · ${year}`;
+}
+
+// A parsed numeric view of a project's week figures (the API delivers decimal strings).
+function num(value: string): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+type Mode = 'step' | 'summary' | 'done';
+
+const wordmark = (
+  <span className="wordmark">
+    <span className="sq" aria-hidden="true"></span>VORHABEN
+  </span>
+);
+
+export function ClosePage() {
+  const navigate = useNavigate();
+
+  const [data, setData] = useState<CloseCurrent | null>(null);
+  const [signals, setSignals] = useState<Signal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<Mode>('step');
+  const [index, setIndex] = useState(0);
+  // The week was already closed before this visit — re-visiting shows the summary, not the walk.
+  const [alreadyClosed, setAlreadyClosed] = useState(false);
+
+  // Per-project working state, keyed by project_id (§2.5 step 1, split into two questions by ticket
+  // 27). A key present in `feelings` / `trends` means the user touched that picker on the step (the
+  // value may be a value or null = an explicit Clear); `untouched` holds projects the user answered
+  // "didn't touch it" (which resolves the whole row and takes precedence over any picked value).
+  const [feelings, setFeelings] = useState<Map<number, Feeling | null>>(new Map());
+  const [trends, setTrends] = useState<Map<number, Trend | null>>(new Map());
+  const [untouched, setUntouched] = useState<Set<number>>(new Set());
+  const [notes, setNotes] = useState<Map<number, string>>(new Map());
+  // Projects already covered today (from getMoodToday) — optional garnish so a re-visited step shows
+  // its questions as already answered rather than blank. Values aren't carried by the API, so the
+  // pickers read as answered without echoing the exact word.
+  const [todayFeeling, setTodayFeeling] = useState<ReadonlySet<number>>(new Set());
+  const [todayTrend, setTodayTrend] = useState<ReadonlySet<number>>(new Set());
+  const [todayUntouched, setTodayUntouched] = useState<ReadonlySet<number>>(new Set());
+  // Dedupe writes: the last (value, note) persisted per (project, kind), so re-visiting a step via
+  // Back → Next doesn't append a duplicate mood when nothing changed.
+  const savedRef = useRef<Map<string, string>>(new Map());
+
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      getCloseCurrent(),
+      getSignals().catch(() => ({ signals: [] })),
+      getMoodToday().catch(() => null),
+    ])
+      .then(([current, sig, today]) => {
+        if (cancelled) return;
+        setData(current);
+        setSignals(sig.signals);
+        if (today) {
+          setTodayFeeling(new Set(today.feelingProjectIds));
+          setTodayTrend(new Set(today.trendProjectIds));
+          setTodayUntouched(new Set(today.untouchedProjectIds));
+        }
+        // Already closed, or no active projects to walk → land on the summary, not the walk.
+        if (current.closed) {
+          setAlreadyClosed(true);
+          setMode('summary');
+        } else if (current.projects.length === 0) {
+          setMode('summary');
+        } else {
+          setMode('step');
+          setIndex(0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError('Could not open the weekly close. Please try again.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Stable reference so the summary memos below don't recompute (and warn) on every render.
+  const projects = useMemo<CloseProject[]>(() => data?.projects ?? [], [data]);
+  const project: CloseProject | undefined = projects[index];
+
+  // Summary highlights: best = highest income this week (>0); heaviest = most hours (>0).
+  const best = useMemo(() => {
+    let pick: CloseProject | null = null;
+    for (const p of projects) {
+      if (num(p.income) > 0 && (!pick || num(p.income) > num(pick.income))) pick = p;
+    }
+    return pick;
+  }, [projects]);
+
+  const heaviest = useMemo(() => {
+    let pick: CloseProject | null = null;
+    for (const p of projects) {
+      if (num(p.hours) > 0 && (!pick || num(p.hours) > num(pick.hours))) pick = p;
+    }
+    return pick;
+  }, [projects]);
+
+  // The single engine sentence, most-concerning first (omitted entirely when the engine is quiet).
+  const engineLine = signals[0]?.sentence ?? null;
+
+  // Persist the current step's feeling if the user touched it (and it changed since last save).
+  // Only a tapped feeling writes — a note without a feeling is skipped (it would otherwise clear the
+  // mood). Feelings carry source 'weekly_close'; notes ride along on the same write path.
+  // Each answered kind writes its own event with source 'weekly_close'; the note rides the first
+  // answered question (feeling before trend) so a single reflection isn't duplicated across two
+  // events. An "didn't touch it" answer resolves the row — it writes one untouched event (value
+  // null) and skips the rest. A note alone (no answer) is skipped. Dedupe is per (project, kind) so
+  // re-visiting a step via Back → Next never appends a duplicate.
+  async function persistCurrent(): Promise<void> {
+    if (!project) return;
+    const pid = project.project_id;
+    const note = (notes.get(pid) ?? '').trim();
+
+    if (untouched.has(pid)) {
+      const signature = `untouched ${note}`;
+      if (savedRef.current.get(`${pid}:untouched`) === signature) return;
+      await logProjectMood(pid, null, note || undefined, 'weekly_close', 'untouched');
+      savedRef.current.set(`${pid}:untouched`, signature);
+      return;
+    }
+
+    let noteUsed = false;
+    if (feelings.has(pid)) {
+      const value = feelings.get(pid) ?? null;
+      const ride = note || undefined;
+      const signature = `${value} ${ride ?? ''}`;
+      if (savedRef.current.get(`${pid}:feeling`) !== signature) {
+        await logProjectMood(pid, value, ride, 'weekly_close', 'feeling');
+        savedRef.current.set(`${pid}:feeling`, signature);
+      }
+      if (ride) noteUsed = true;
+    }
+    if (trends.has(pid)) {
+      const value = trends.get(pid) ?? null;
+      const ride = !noteUsed && note ? note : undefined;
+      const signature = `${value} ${ride ?? ''}`;
+      if (savedRef.current.get(`${pid}:trend`) !== signature) {
+        await logProjectMood(pid, value, ride, 'weekly_close', 'trend');
+        savedRef.current.set(`${pid}:trend`, signature);
+      }
+    }
+  }
+
+  async function next() {
+    setSaveError(null);
+    try {
+      await persistCurrent();
+    } catch {
+      setSaveError('Could not save this feeling. You can carry on — nothing is lost.');
+    }
+    if (index < projects.length - 1) {
+      setIndex((i) => i + 1);
+    } else {
+      setMode('summary');
+    }
+  }
+
+  function back() {
+    setSaveError(null);
+    if (mode === 'summary') {
+      if (projects.length > 0) {
+        setMode('step');
+        setIndex(projects.length - 1);
+      }
+      return;
+    }
+    if (index > 0) setIndex((i) => i - 1);
+  }
+
+  function leave() {
+    navigate('/');
+  }
+
+  async function closeWeek() {
+    if (!data || closing) return;
+    setClosing(true);
+    setSaveError(null);
+    try {
+      await recordClose(data.period);
+      setMode('done');
+    } catch {
+      setSaveError('Could not close the week. Please try again.');
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  // Record an answer on the current step. Writes are deferred to Next (persistCurrent) so the note
+  // can ride the same event. "Didn't touch it" resolves the row and clears any picked value;
+  // conversely, picking a real answer clears an earlier "didn't touch it" — the two contradict.
+  function handleLog(pid: number, kind: MoodKind, value: Feeling | Trend | null) {
+    if (kind === 'untouched') {
+      setUntouched((prev) => new Set(prev).add(pid));
+      setFeelings((prev) => {
+        const nextMap = new Map(prev);
+        nextMap.delete(pid);
+        return nextMap;
+      });
+      setTrends((prev) => {
+        const nextMap = new Map(prev);
+        nextMap.delete(pid);
+        return nextMap;
+      });
+      return;
+    }
+    setUntouched((prev) => {
+      const next = new Set(prev);
+      next.delete(pid);
+      return next;
+    });
+    if (kind === 'feeling') {
+      setFeelings((prev) => new Map(prev).set(pid, value as Feeling | null));
+    } else {
+      setTrends((prev) => new Map(prev).set(pid, value as Trend | null));
+    }
+  }
+
+  function setNote(pid: number, value: string) {
+    setNotes((prev) => {
+      const nextMap = new Map(prev);
+      nextMap.set(pid, value);
+      return nextMap;
+    });
+  }
+
+  // ————— loading / error —————
+  if (loading) {
+    return (
+      <main className="close-stage">
+        <div className="close-shell">
+          <div className="close-top">{wordmark}</div>
+          <p className="close-kicker">Weekly Close</p>
+          <p className="close-empty">Loading…</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <main className="close-stage">
+        <div className="close-shell">
+          <div className="close-top">
+            {wordmark}
+            <button type="button" className="close-exit" onClick={leave}>
+              Back to dashboard
+            </button>
+          </div>
+          <p className="close-kicker">Weekly Close</p>
+          <p className="form-error" role="alert">
+            {error ?? 'Could not open the weekly close.'}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const label = periodLabel(data.period);
+
+  // ————— done —————
+  if (mode === 'done') {
+    return (
+      <main className="close-stage">
+        <div className="close-shell">
+          <div className="close-top">{wordmark}</div>
+          <section className="close-card close-done">
+            <p className="close-kicker">Weekly Close</p>
+            <h1 className="close-done-t">The week is closed.</h1>
+            <p className="close-done-s">Nothing else to do. See you next week.</p>
+            <Link to="/" className="close-back-link">
+              Back to dashboard
+            </Link>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  // ————— summary —————
+  if (mode === 'summary') {
+    return (
+      <main className="close-stage">
+        <div className="close-shell">
+          <div className="close-top">
+            {wordmark}
+            <button type="button" className="close-exit" onClick={leave}>
+              Close and finish later
+            </button>
+          </div>
+
+          <p className="close-kicker">Weekly Close</p>
+          <h1 className="close-period">{label}</h1>
+
+          <section className="close-card">
+            <h2 className="close-proj-name">This week, in short</h2>
+
+            {projects.length === 0 ? (
+              <p className="close-empty">
+                No active projects this week — there is nothing to walk. You can still close the
+                week.
+              </p>
+            ) : (
+              <div className="close-summary">
+                <div className="close-hl">
+                  <span className="close-hl-k">Best week</span>
+                  <div className="close-hl-row">
+                    {best ? (
+                      <>
+                        <span className="close-hl-n">{best.name}</span>
+                        <span className="close-hl-v num">
+                          {formatMoney(best.income, data.base_currency)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="close-hl-n close-fig-z">No income entered this week.</span>
+                    )}
+                  </div>
+                </div>
+                <div className="close-hl">
+                  <span className="close-hl-k">Most hours</span>
+                  <div className="close-hl-row">
+                    {heaviest ? (
+                      <>
+                        <span className="close-hl-n">{heaviest.name}</span>
+                        <span className="close-hl-v num">{formatHours(heaviest.hours)} h</span>
+                      </>
+                    ) : (
+                      <span className="close-hl-n close-fig-z">No time logged this week.</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {engineLine && (
+              <div className="close-engine">
+                <span className="close-engine-k">Worth noting</span>
+                <p className="close-engine-t">{engineLine}</p>
+              </div>
+            )}
+
+            {saveError && (
+              <p className="form-error close-save-error" role="alert">
+                {saveError}
+              </p>
+            )}
+
+            {alreadyClosed ? (
+              <div className="close-actions">
+                <p className="close-done-s" style={{ margin: 0, textAlign: 'center' }}>
+                  This week is already closed.
+                </p>
+                <Link to="/" className="close-back-link">
+                  Back to dashboard
+                </Link>
+              </div>
+            ) : (
+              <div className="close-actions">
+                <button type="button" className="cta" onClick={closeWeek} disabled={closing}>
+                  {closing ? 'Closing…' : 'Close the week'}
+                </button>
+                {projects.length > 0 && (
+                  <button type="button" className="close-back-link" onClick={back}>
+                    Back
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  // ————— per-project step —————
+  if (!project) return null;
+  const hours = num(project.hours);
+  const income = num(project.income);
+  const noTime = hours <= 0;
+  const noIncome = income <= 0;
+  const isLastProject = index === projects.length - 1;
+
+  return (
+    <main className="close-stage">
+      <div className="close-shell">
+        <div className="close-top">
+          {wordmark}
+          <button type="button" className="close-exit" onClick={leave}>
+            Close and finish later
+          </button>
+        </div>
+
+        <p className="close-kicker">Weekly Close</p>
+        <h1 className="close-period">{label}</h1>
+
+        <p className="close-progress">
+          Project {index + 1} of {projects.length}
+        </p>
+        <div className="close-ticks" aria-hidden="true">
+          {projects.map((p, i) => (
+            <span
+              key={p.project_id}
+              className={`close-tick${i < index ? ' done' : i === index ? ' cur' : ''}`}
+            />
+          ))}
+        </div>
+
+        <section className="close-card" aria-labelledby="close-proj">
+          <h2 id="close-proj" className="close-proj-name">
+            {project.name}
+          </h2>
+
+          <div className="kv close-figures">
+            <div className="kvr">
+              <span>Hours logged</span>
+              <b className={`num${noTime ? ' close-fig-z' : ''}`}>
+                {noTime ? '—' : `${formatHours(project.hours)} h`}
+              </b>
+            </div>
+            <div className="kvr">
+              <span>Money entered</span>
+              <b className={`num${noIncome ? ' close-fig-z' : ''}`}>
+                {noIncome ? '—' : formatMoney(project.income, data.base_currency)}
+              </b>
+            </div>
+          </div>
+
+          {noTime && (
+            <div className="close-gap">
+              <p className="close-gap-t">No time logged this week.</p>
+              <p className="close-gap-s">
+                <Link to={`/projects/${project.project_id}`} className="close-gap-add">
+                  Add it now
+                </Link>
+                , or move on — either is fine.
+              </p>
+            </div>
+          )}
+          {noIncome && (
+            <div className="close-gap">
+              <p className="close-gap-t">No income entered this week.</p>
+              <p className="close-gap-s">
+                <Link to={`/projects/${project.project_id}`} className="close-gap-add">
+                  Add it now
+                </Link>
+                , or move on — either is fine.
+              </p>
+            </div>
+          )}
+
+          <div className="close-feel">
+            <span className="close-label">How did the week go?</span>
+            <div className="close-pick">
+              <CheckInRow
+                feeling={feelings.get(project.project_id) ?? null}
+                trend={trends.get(project.project_id) ?? null}
+                feelingAnswered={
+                  feelings.has(project.project_id) ||
+                  untouched.has(project.project_id) ||
+                  todayFeeling.has(project.project_id) ||
+                  todayUntouched.has(project.project_id)
+                }
+                trendAnswered={
+                  trends.has(project.project_id) ||
+                  untouched.has(project.project_id) ||
+                  todayTrend.has(project.project_id) ||
+                  todayUntouched.has(project.project_id)
+                }
+                untouched={
+                  untouched.has(project.project_id) || todayUntouched.has(project.project_id)
+                }
+                onLog={(kind, value) => handleLog(project.project_id, kind, value)}
+              />
+            </div>
+          </div>
+
+          <label className="field close-note">
+            <span>Anything worth remembering?</span>
+            <textarea
+              rows={2}
+              maxLength={1000}
+              value={notes.get(project.project_id) ?? ''}
+              placeholder="Optional — a line for future you."
+              onChange={(e) => setNote(project.project_id, e.target.value)}
+            />
+          </label>
+
+          {saveError && (
+            <p className="form-error close-save-error" role="alert">
+              {saveError}
+            </p>
+          )}
+
+          <div className="close-nav">
+            <button type="button" className="btn ghost sm" onClick={back} disabled={index === 0}>
+              Back
+            </button>
+            <button type="button" className="btn ghost sm" onClick={() => void next()}>
+              {isLastProject ? 'Review the week' : 'Next'}
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}

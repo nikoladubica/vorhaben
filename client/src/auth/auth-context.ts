@@ -4,6 +4,8 @@ export type User = {
   id: number;
   email: string;
   base_currency: string;
+  // Onboarding preference (design screen "03"): track hours vs. revenue-only. Server default true.
+  track_hours: boolean;
   created_at?: string;
 };
 

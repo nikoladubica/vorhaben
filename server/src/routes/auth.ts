@@ -15,12 +15,18 @@ interface UserRow {
   email: string;
   password_hash: string;
   base_currency: string;
+  track_hours: boolean;
   created_at: Date;
 }
 
 /** Public shape of a user — never includes password_hash. */
-function publicUser(user: Pick<UserRow, 'id' | 'email' | 'base_currency'>) {
-  return { id: user.id, email: user.email, base_currency: user.base_currency };
+function publicUser(user: Pick<UserRow, 'id' | 'email' | 'base_currency' | 'track_hours'>) {
+  return {
+    id: user.id,
+    email: user.email,
+    base_currency: user.base_currency,
+    track_hours: Boolean(user.track_hours),
+  };
 }
 
 authRouter.post('/register', async (req, res) => {
@@ -67,7 +73,10 @@ authRouter.post('/register', async (req, res) => {
 
   const userId = Number(id);
   res.cookie(AUTH_COOKIE, signToken(userId), authCookieOptions);
-  res.status(201).json(publicUser({ id: userId, email, base_currency: baseCurrency }));
+  // track_hours is not set on insert, so the row takes the column default (true).
+  res.status(201).json(
+    publicUser({ id: userId, email, base_currency: baseCurrency, track_hours: true }),
+  );
 });
 
 authRouter.post('/login', async (req, res) => {
@@ -100,7 +109,7 @@ authRouter.post('/logout', (_req, res) => {
 authRouter.get('/me', requireAuth, async (req, res) => {
   const user = await db<UserRow>('users')
     .where({ id: req.userId })
-    .first('id', 'email', 'base_currency', 'created_at');
+    .first('id', 'email', 'base_currency', 'track_hours', 'created_at');
 
   if (!user) {
     // Token was valid but the user no longer exists.
@@ -108,5 +117,5 @@ authRouter.get('/me', requireAuth, async (req, res) => {
     return;
   }
 
-  res.json(user);
+  res.json({ ...user, track_hours: Boolean(user.track_hours) });
 });

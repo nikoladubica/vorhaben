@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type { ProjectType, ProjectWithMetrics } from '../types';
 import type { TimelineProject } from '../api/dashboard';
-import { listProjectTypes, listProjects, restoreProject } from '../api/projects';
+import { listProjectTypes, listProjects, restoreProject, updateProject } from '../api/projects';
+import { getInvoiceCapabilities } from '../api/invoices';
 import { ProjectFilters } from '../components/projects/ProjectFilters';
 import { StatusBadge } from '../components/projects/StatusBadge';
 import { Timeline } from '../components/dashboard/Timeline';
+import { WeeklyRitual } from '../components/close/WeeklyRitual';
 import { formatMoney } from '../domain/format';
 import { useAuth } from '../auth/useAuth';
 
@@ -75,6 +77,10 @@ export function ProjectsPage() {
   const [types, setTypes] = useState<ProjectType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // The invoice scanner (ticket 14) is a hosted/BYOK feature: show its entry point only when the
+  // feature is offerable (a platform key or the user's own BYOK key). Self-host without a key → the
+  // action never appears. The locked/upgrade state lives on the scanner page itself.
+  const [scanAvailable, setScanAvailable] = useState(false);
 
   // Take the trashed hand-off once, then strip it from history so a reload won't re-show it.
   const [trashed, setTrashed] = useState<Trashed | null>(() => {
@@ -119,6 +125,12 @@ export function ProjectsPage() {
     listProjectTypes()
       .then(setTypes)
       .catch(() => setTypes([]));
+  }, []);
+
+  useEffect(() => {
+    getInvoiceCapabilities()
+      .then((c) => setScanAvailable(c.available))
+      .catch(() => setScanAvailable(false));
   }, []);
 
   const typeLabels = useMemo(() => {
@@ -173,18 +185,56 @@ export function ProjectsPage() {
     }
   }
 
+  // Reactivate an ended project (§2.7): clear its end date, and the server re-derives `active`. Uses
+  // the same updateProject write path; a refetch drops the row out of the Ended panel. Soft and
+  // fully reversible — nothing is hard-deleted, the ending note is kept.
+  async function onReactivate(p: ProjectWithMetrics) {
+    try {
+      await updateProject(p.id, {
+        name: p.name,
+        type: p.type,
+        description: p.description,
+        status: p.status === 'ended' ? 'active' : p.status,
+        start_date: p.start_date,
+        end_date: null,
+        compensation_model: p.compensation_model,
+        rate_amount: p.rate_amount === null ? null : Number(p.rate_amount),
+        rate_currency: p.rate_currency,
+        tags: p.tags,
+      });
+      await load();
+    } catch {
+      setError('Could not reactivate the project. Please try again.');
+    }
+  }
+
   const hasFilters = Boolean(filters.status || filters.type || filters.tag);
+
+  // The Ended panel (graveyard) is a companion to the default view. When no status filter is
+  // active, ended projects live ONLY there — filtered out of the main table below so each appears
+  // once. A status filter (e.g. "ended") shows the table as the user asked and hides the panel.
+  const statusFiltered = Boolean(filters.status);
+  const endedProjects = useMemo(() => projects.filter((p) => p.status === 'ended'), [projects]);
+  const tableProjects = statusFiltered ? projects : projects.filter((p) => p.status !== 'ended');
+  const showGraveyard = !statusFiltered && endedProjects.length > 0;
 
   return (
     <div>
       <div className="dash-head">
         <h3>Projects</h3>
         <div className="pd-actions">
+          {scanAvailable && (
+            <Link className="btn ghost sm" to="/projects/scan">
+              Scan invoice
+            </Link>
+          )}
           <Link className="btn primary sm" to="/projects/new">
             New project
           </Link>
         </div>
       </div>
+
+      <WeeklyRitual />
 
       {trashed && (
         <div className="undo-banner" role="status">
@@ -232,7 +282,7 @@ export function ProjectsPage() {
           <span className="t">All projects</span>
           {!loading && !error && projects.length > 0 && (
             <span className="s num">
-              {projects.length} total · {activeCount} active
+              {tableProjects.length} total · {activeCount} active
             </span>
           )}
         </div>
@@ -256,6 +306,10 @@ export function ProjectsPage() {
                 </>
               )}
             </div>
+          ) : tableProjects.length === 0 ? (
+            <div className="table-empty">
+              <p>Every project has ended. Find them in Ended, below.</p>
+            </div>
           ) : (
             <table className="projects">
               <thead>
@@ -270,7 +324,7 @@ export function ProjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((p) => (
+                {tableProjects.map((p) => (
                   <tr key={p.id}>
                     <td>
                       <Link className="project-link" to={`/projects/${p.id}`}>
@@ -304,6 +358,52 @@ export function ProjectsPage() {
           )}
         </div>
       </div>
+
+      {/* Ended (the graveyard, §2.7): an archive of finished undertakings, not a trash can. Each row
+          reads its lifespan, lifetime earnings and effective rate, plus the ending note as a quiet
+          quoted line. Reactivate is a plain text control — never red, fully reversible. */}
+      {showGraveyard && (
+        <div className="panel graveyard" style={{ marginTop: 20 }}>
+          <div className="panel-h">
+            <span className="t">Ended</span>
+            <span className="s num">{endedProjects.length} archived</span>
+          </div>
+          <div className="panel-b">
+            <ul className="graveyard-list">
+              {endedProjects.map((p) => (
+                <li key={p.id} className="graveyard-row">
+                  <div className="graveyard-line">
+                    <Link className="project-link graveyard-name" to={`/projects/${p.id}`}>
+                      {p.name}
+                    </Link>
+                    <span className="graveyard-span num">{formatRan(p)}</span>
+                    <span className="graveyard-fig num">
+                      <span className="graveyard-fig-k">Earned</span>
+                      {p.total_revenue === null
+                        ? '—'
+                        : formatMoney(String(p.total_revenue), baseCurrency)}
+                    </span>
+                    <span className="graveyard-fig num">
+                      <span className="graveyard-fig-k">Rate</span>
+                      {p.effective_hourly_rate === null
+                        ? '—'
+                        : `${formatMoney(String(p.effective_hourly_rate), '')}/h`}
+                    </span>
+                    <button
+                      type="button"
+                      className="graveyard-reactivate"
+                      onClick={() => void onReactivate(p)}
+                    >
+                      Reactivate
+                    </button>
+                  </div>
+                  {p.ending_note && <p className="graveyard-note">“{p.ending_note}”</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
