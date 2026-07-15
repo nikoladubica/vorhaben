@@ -242,12 +242,14 @@ export function EndingRitualPage() {
 const VALENCE: Record<Feeling, number> = {
   excited: 2,
   happy: 2,
-  grateful: 2,
-  opportunistic: 1,
-  pessimistic: -1,
+  fine: 0,
   stressed: -1,
   sad: -2,
   miserable: -2,
+  // Legacy feelings — retired from writes but still scored so historic sparks read unchanged.
+  grateful: 2,
+  opportunistic: 1,
+  pessimistic: -1,
 };
 
 // Viewport of the spark. A wide, short strip that scales to the container while keeping dots round
@@ -260,7 +262,10 @@ const PAD_Y = 10;
 function MoodSpark({ moods }: { moods: MoodEvent[] }) {
   // Chronological (the API returns newest-first); each event keeps its slot so gaps stay visible.
   const points = useMemo(() => {
-    const chrono = [...moods].reverse();
+    // Only FEELING events carry a valence (§2.7); trend and untouched events are not plotted on the
+    // mood spark. Chronological (the API returns newest-first); each event keeps its slot so gaps
+    // stay visible.
+    const chrono = [...moods].reverse().filter((m) => m.kind === 'feeling');
     const n = chrono.length;
     const innerW = W - PAD_X * 2;
     const innerH = H - PAD_Y * 2;
@@ -268,7 +273,9 @@ function MoodSpark({ moods }: { moods: MoodEvent[] }) {
     // valence 2 → top, −2 → bottom; 0 → the zero-rule (middle).
     const yFor = (v: number) => PAD_Y + (1 - (v + 2) / 4) * innerH;
     return chrono
-      .map((m, i) => (m.value === null ? null : { x: xFor(i), y: yFor(VALENCE[m.value]) }))
+      .map((m, i) =>
+        m.value === null ? null : { x: xFor(i), y: yFor(VALENCE[m.value as Feeling]) },
+      )
       .filter((p): p is { x: number; y: number } => p !== null);
   }, [moods]);
 

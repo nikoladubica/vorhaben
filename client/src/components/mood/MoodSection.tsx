@@ -1,22 +1,28 @@
-// Mood block for the project-detail screen (ticket 01 / §2.2). Shows the project's current feeling
-// and lets the user change it by REUSING the canvas FeelingPicker — there is no second picker. On
-// pick, an optional one-line "why?" input appears; Save logs the change with the note, Skip logs it
-// without one. Both go through POST /projects/:id/moods (the note-carrying path). Below, the last
-// few stream entries render as a quiet hairline list. Presentational + self-contained: it owns its
-// own load/log state and never mutates the parent project object.
+// Mood block for the project-detail screen (ticket 01 / §2.2, split by ticket 27). Shows the
+// project's current feeling AND trend and lets the user change either by REUSING the shared
+// CheckInRow (the same two-question unit the nudge and Weekly Close use) — there is no second set of
+// pickers. On a pick, an optional one-line "why?" input appears; Save logs the change with the note,
+// Skip logs it without one — the note rides the event whichever question it answers. "Didn't touch
+// it" logs immediately (there is nothing to annotate). All writes go through POST /projects/:id/moods
+// (the one write path). Below, the stream renders every kind in one list, newest first: feeling
+// entries as the word, trend entries with their glyph + word, untouched entries as "Didn't touch it"
+// — no visual escalation. Presentational + self-contained: it owns its own load/log state and never
+// mutates the parent project object.
 
 import { useEffect, useRef, useState } from 'react';
-import type { Feeling, MoodEvent } from '../../types';
+import type { Feeling, MoodEvent, MoodKind, Trend } from '../../types';
 import type { Signal } from '../../api/signals';
 import { listProjectMoods, logProjectMood } from '../../api/moods';
 import { formatRelativeTime } from '../../domain/format';
-import { FeelingPicker } from '../canvas/FeelingPicker';
+import { CheckInRow } from './CheckInRow';
+import { TREND_LABEL } from '../canvas/trendMeta';
 import './mood.css';
 
 interface MoodSectionProps {
   projectId: number;
-  // The project's current feeling (the denormalized column value) — the starting display.
+  // The project's current feeling and trend (the denormalized column values) — the starting display.
   feeling: Feeling | null;
+  trend: Trend | null;
   // This project's First Signal (breaktrough.md §2.3–§2.4), or null when the engine has nothing to
   // say yet. Rendered as words under the stream — never numbers, never red.
   signal: Signal | null;
@@ -33,19 +39,28 @@ const CONFIDENCE_LABEL: Record<Signal['confidence'], string> = {
   established: 'Established trend',
 };
 
-// 'excited' → 'Excited' for display; state stays lowercase enum values. A cleared feeling (null)
-// reads as "Cleared" in the stream.
-function feelingLabel(value: Feeling | null): string {
-  if (value === null) return 'Cleared';
+// 'excited' → 'Excited' for display; state stays lowercase enum values. Works for legacy feelings too.
+function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-// A pick awaiting its optional "why" — `value` may be null (a Clear), so we box it rather than use
-// null to mean "no pending pick".
-type Pending = { value: Feeling | null };
+// One stream entry's label, by kind: a feeling reads as the word, a trend as its glyph + word
+// ("▲ Good"), an untouched entry as "Didn't touch it". A cleared feeling/trend (null value) reads
+// "Cleared". Legacy feelings still render — they are only barred from the picker, never from history.
+function streamLabel(ev: MoodEvent): string {
+  if (ev.kind === 'untouched') return 'Didn’t touch it';
+  if (ev.value === null) return 'Cleared';
+  if (ev.kind === 'trend') return TREND_LABEL[ev.value as Trend] ?? capitalize(ev.value);
+  return capitalize(ev.value);
+}
 
-export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
+// A pick awaiting its optional "why". A discriminated union so `value` narrows to the right type per
+// question; `value` may be null (a Clear), so we box it rather than use null to mean "no pending".
+type Pending = { kind: 'feeling'; value: Feeling | null } | { kind: 'trend'; value: Trend | null };
+
+export function MoodSection({ projectId, feeling, trend, signal }: MoodSectionProps) {
   const [current, setCurrent] = useState<Feeling | null>(feeling);
+  const [currentTrend, setCurrentTrend] = useState<Trend | null>(trend);
   const [events, setEvents] = useState<MoodEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -61,6 +76,9 @@ export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
   useEffect(() => {
     setCurrent(feeling);
   }, [feeling]);
+  useEffect(() => {
+    setCurrentTrend(trend);
+  }, [trend]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,12 +99,38 @@ export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
     };
   }, [projectId]);
 
-  // Picking a feeling doesn't write yet — it opens the optional "why" row. The picker's own button
-  // reflects the pending value so the user sees their choice before deciding to annotate it.
-  function handlePick(value: Feeling | null) {
+  // Log an "didn't touch it" answer immediately — there is nothing to annotate, so it skips the why
+  // row entirely. It touches neither current column; it only appends to the stream.
+  async function logUntouched() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const created = await logProjectMood(projectId, null, undefined, undefined, 'untouched');
+      setEvents((prev) => [created, ...prev].slice(0, STREAM_LIMIT));
+      setPending(null);
+      setNote('');
+    } catch {
+      setSaveError('Could not save this. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Picking a feeling or trend doesn't write yet — it opens the optional "why" row. The picker's own
+  // button reflects the pending value so the user sees their choice before deciding to annotate it.
+  function handleLog(kind: MoodKind, value: Feeling | Trend | null) {
+    if (kind === 'untouched') {
+      void logUntouched();
+      return;
+    }
     setSaveError(null);
     setNote('');
-    setPending({ value });
+    setPending(
+      kind === 'feeling'
+        ? { kind: 'feeling', value: value as Feeling | null }
+        : { kind: 'trend', value: value as Trend | null },
+    );
     // Focus the why input once it mounts.
     window.setTimeout(() => whyInputRef.current?.focus(), 0);
   }
@@ -101,8 +145,11 @@ export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
         projectId,
         pending.value,
         withNote && trimmed ? trimmed : undefined,
+        undefined,
+        pending.kind,
       );
-      setCurrent(pending.value);
+      if (pending.kind === 'feeling') setCurrent(pending.value);
+      else setCurrentTrend(pending.value);
       setEvents((prev) => [created, ...prev].slice(0, STREAM_LIMIT));
       setPending(null);
       setNote('');
@@ -113,6 +160,10 @@ export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
     }
   }
 
+  // Reflect the pending pick on the relevant trigger; the other trigger keeps its current value.
+  const shownFeeling = pending?.kind === 'feeling' ? pending.value : current;
+  const shownTrend = pending?.kind === 'trend' ? pending.value : currentTrend;
+
   return (
     <div className="panel mood-panel">
       <div className="panel-h">
@@ -121,9 +172,14 @@ export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
       </div>
       <div className="panel-b">
         <div className="mood-set">
-          <div className="mood-pick">
-            <FeelingPicker value={pending ? pending.value : current} onChange={handlePick} />
-          </div>
+          <CheckInRow
+            feeling={shownFeeling}
+            trend={shownTrend}
+            feelingAnswered={current !== null}
+            trendAnswered={currentTrend !== null}
+            untouched={false}
+            onLog={handleLog}
+          />
 
           {pending && (
             <form
@@ -178,7 +234,7 @@ export function MoodSection({ projectId, feeling, signal }: MoodSectionProps) {
             {events.map((ev) => (
               <li key={ev.id} className="mood-ev">
                 <div className="mood-ev-top">
-                  <span className="mood-ev-v">{feelingLabel(ev.value)}</span>
+                  <span className="mood-ev-v">{streamLabel(ev)}</span>
                   <span className="mood-ev-d num">{formatRelativeTime(ev.created_at)}</span>
                 </div>
                 {ev.note && <p className="mood-ev-n">{ev.note}</p>}

@@ -340,7 +340,12 @@ export function ProjectDetailPage() {
         </div>
 
         <div className="pd-col">
-          <MoodSection projectId={project.id} feeling={project.feeling} signal={signal} />
+          <MoodSection
+            projectId={project.id}
+            feeling={project.feeling}
+            trend={project.trend}
+            signal={signal}
+          />
           <div className="panel">
             <div className="panel-h">
               <span className="t">Compensation</span>

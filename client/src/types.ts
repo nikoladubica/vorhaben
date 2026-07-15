@@ -14,20 +14,32 @@ export type CompensationModel =
 // Project lifecycle statuses (§1.2). Mirrors the DB enum on projects.status.
 export type ProjectStatus = 'idea' | 'active' | 'paused' | 'ended';
 
-// The 8 canvas feelings — a closed list; keep in sync with the server enum. How the work FEELS,
-// independent of the numbers (screen 14).
-export type Feeling =
-  | 'happy'
-  | 'sad'
-  | 'miserable'
-  | 'excited'
-  | 'opportunistic'
-  | 'pessimistic'
-  | 'stressed'
-  | 'grateful';
+// The FEELING check-in — "How do you feel about it?" (§2.2, owner decision 2026-07-14). The 6
+// WRITABLE feelings, in the design's reading order (left → right the fire goes out). Closed list;
+// keep in sync with server/src/domain/constants.ts FEELINGS. These are the only values any picker
+// may offer.
+export const FEELINGS = ['excited', 'happy', 'fine', 'stressed', 'sad', 'miserable'] as const;
 
-// The 3 canvas trends — how the work is GOING. Semantic (good/stable/bad), never the red accent.
-export type Trend = 'good' | 'stable' | 'bad';
+// Retired from writes 2026-07-14 but never from reads: historic mood_events rows and old
+// projects.feeling values keep these forever, so they must still RENDER (capitalized). Never offer
+// them in a picker. Keep in sync with server LEGACY_FEELINGS.
+export const LEGACY_FEELINGS = ['grateful', 'opportunistic', 'pessimistic'] as const;
+
+// The read type covers writable ∪ legacy, because a project's feeling column or an old event may
+// still hold a legacy value. Write validation (server-side) accepts only the 6 writable ones.
+export type Feeling = (typeof FEELINGS)[number] | (typeof LEGACY_FEELINGS)[number];
+
+// The TREND check-in — "How is it going?" (§2.2). Promoted from a canvas-only annotation to a
+// prompted value; the list grew from 3 to 5 (the middle three are the historic DB values). Semantic
+// only (good via --good, stable muted, bad via --ink) — never the red accent. Keep in sync with
+// server TRENDS.
+export const TRENDS = ['thriving', 'good', 'stable', 'bad', 'failing'] as const;
+export type Trend = (typeof TRENDS)[number];
+
+// The three check-in questions a mood event can answer (§2.2, ticket 26). `feeling` and `trend` are
+// the two prompted values; `untouched` is the explicit "didn't touch it" answer — value must be
+// null, it resolves the whole row without rating anything. Mirrors the server `kind` column.
+export type MoodKind = 'feeling' | 'trend' | 'untouched';
 
 // The canvas connection types — a closed list; keep in sync with server LINK_TYPES. A link is a real
 // project relationship (screen 14), edited on the canvas but readable beyond it. `parent`: the `from`
@@ -219,15 +231,17 @@ export interface NoteInput {
   body_md: string;
 }
 
-// A single event in a project's mood stream (ticket 01 / §2.2). The project still shows one
-// current feeling; underneath, every change is appended here — like a bank ledger. `value` is one
-// of the closed FEELINGS or null (feeling cleared); `note` is the optional one-line "why" (stored
-// verbatim). `source` is manual | nudge | weekly_close. `source_transcript` is never exposed in
-// list reads. `created_at` is a real ISO timestamp (unlike the YYYY-MM-DD dates elsewhere). Mirrors
-// the row shape returned by server/src/routes/moods.ts.
+// A single event in a project's mood stream (ticket 01 / §2.2, split by ticket 26). The project
+// still shows one current feeling and one current trend; underneath, every change is appended here —
+// like a bank ledger. `kind` names which question the event answers: a `feeling` event carries a
+// Feeling (or null = cleared), a `trend` event carries a Trend (or null), an `untouched` event
+// carries null ("didn't touch it"). `note` is the optional one-line "why" (stored verbatim, rides
+// any kind). `source` is manual | nudge | weekly_close. `created_at` is a real ISO timestamp.
+// Mirrors the row shape returned by server/src/routes/moods.ts.
 export interface MoodEvent {
   id: number;
-  value: Feeling | null;
+  kind: MoodKind;
+  value: Feeling | Trend | null;
   note: string | null;
   source: string;
   created_at: string;

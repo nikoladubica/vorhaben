@@ -1,28 +1,15 @@
-// Trend picker for a canvas card (screen 14). Presentational + prop-driven — no API calls; the page
-// owns persistence via `onChange`. The trigger is a real <button> (skipped by the card drag handler)
-// showing the current trend with its SEMANTIC treatment — ▲ Good in --good, ▬ Stable in --ink-3,
-// ▼ Bad in --ink — never the red accent. Clicking opens a hairline `.cv-menu` with the 3 closed-list
-// options + a Clear row. Closes on pick, outside-click, and Escape.
+// Trend picker (screen 14 + the check-in surfaces). Presentational + prop-driven — no API calls; the
+// host owns persistence via `onChange`. The trigger is a real <button> (skipped by the card drag
+// handler) showing the current trend with its SEMANTIC treatment — thriving/good in --good, stable
+// in --ink-3, bad/failing in --ink — NEVER the red accent (failing is information, not an alarm).
+// Clicking opens a hairline `.cv-menu` with the 5 closed-list options + a Clear row. Closes on pick,
+// outside-click, and Escape.
 
 import { useRef, useState } from 'react';
 import type { Trend } from '../../types';
+import { TRENDS } from '../../types';
+import { TREND_CLASS, TREND_LABEL } from './trendMeta';
 import { useDismiss } from './useDismiss';
-
-const TRENDS: Trend[] = ['good', 'stable', 'bad'];
-
-// Glyph + label per trend, matching the design (▲ Good / ▬ Stable / ▼ Bad).
-const TREND_LABEL: Record<Trend, string> = {
-  good: '▲ Good',
-  stable: '▬ Stable',
-  bad: '▼ Bad',
-};
-
-// Semantic colour class per trend — .t-good (green), .t-stable (muted), .t-bad (ink). Never red.
-const TREND_CLASS: Record<Trend, string> = {
-  good: 't-good',
-  stable: 't-stable',
-  bad: 't-bad',
-};
 
 interface Props {
   value: Trend | null;

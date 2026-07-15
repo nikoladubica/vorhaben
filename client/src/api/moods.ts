@@ -6,7 +6,7 @@
 // per-user "logged today?" check is the flat /moods/today path (see server/src/routes/moods.ts).
 
 import { api } from '../api';
-import type { Feeling, MoodEvent } from '../types';
+import type { Feeling, MoodEvent, MoodKind, Trend } from '../types';
 
 // A project's stream, newest first. `limit` is clamped server-side (default 50, max 200).
 export function listProjectMoods(projectId: number, limit?: number): Promise<MoodEvent[]> {
@@ -19,28 +19,43 @@ export function listProjectMoods(projectId: number, limit?: number): Promise<Moo
 // MOOD_SOURCES (server/src/domain/mood.ts).
 export type MoodSource = 'manual' | 'nudge' | 'weekly_close';
 
-// Log a mood change, optionally carrying a one-line "why" note and a source marker. This is the
-// note-carrying write path; a note always appends a new event, even inside the settling window. An
-// empty/whitespace note is treated as no note by the server.
+// Log a mood change, optionally carrying a one-line "why" note and a source marker. `kind` names
+// which question the answer belongs to (§2.2, ticket 26): `feeling` (default, so existing call
+// sites compile unchanged) validates the value against the 6 writable FEELINGS; `trend` validates
+// against the 5 TRENDS; `untouched` records the explicit "didn't touch it" answer and requires a
+// null value. This is the note-carrying write path; a note always appends a new event, even inside
+// the per-kind settling window. An empty/whitespace note is treated as no note by the server.
 export function logProjectMood(
   projectId: number,
-  value: Feeling | null,
+  value: Feeling | Trend | null,
   note?: string,
   source?: MoodSource,
+  kind: MoodKind = 'feeling',
 ): Promise<MoodEvent> {
-  const body: { value: Feeling | null; note?: string; source?: MoodSource } = { value };
+  const body: {
+    value: Feeling | Trend | null;
+    note?: string;
+    source?: MoodSource;
+    kind: MoodKind;
+  } = { value, kind };
   if (note !== undefined) body.note = note;
   if (source !== undefined) body.source = source;
   return api.post<MoodEvent>(`/projects/${projectId}/moods`, body);
 }
 
 // What the user has logged today — feeds the daily nudge. `logged` is true when any live mood event
-// exists today; `projectIds` names the projects already covered, so the nudge can ask only about the
-// ones still outstanding. The `tz` param is a signed minute offset from UTC so "today" matches the
-// user's wall clock rather than server time.
+// exists today. Coverage is now per kind (ticket 26): `feelingProjectIds` / `trendProjectIds` name
+// the projects with a feeling / trend answer today; `untouchedProjectIds` names those answered
+// "didn't touch it" — an untouched answer covers BOTH questions. `projectIds` is the legacy
+// feeling-covered set, kept for backward compatibility. The nudge treats a project as done only when
+// both questions are covered (directly or via untouched). The `tz` param is a signed minute offset
+// from UTC so "today" matches the user's wall clock rather than server time.
 export interface MoodToday {
   logged: boolean;
   projectIds: number[];
+  feelingProjectIds: number[];
+  trendProjectIds: number[];
+  untouchedProjectIds: number[];
 }
 
 export function getMoodToday(): Promise<MoodToday> {
